@@ -3,6 +3,7 @@ from sqlmodel import Session, create_engine, SQLModel
 from app.models.user import User
 from app.models.organization import Organization
 from app.models.link_models import UserOrganization
+from app.models.link_models import Invitation
 
 api = FastAPI()
 
@@ -41,4 +42,12 @@ with Session(engine) as session:
     )
 
     session.add_all([user_organization_1, user_organization_2])
+
+    invitation_1 = Invitation(
+        status="x", user_id=user_1.id, organization_id=organization_2.id
+    )
+    invitation_2 = Invitation(
+        status="pending", user_id=user_2.id, organization_id=organization_3.id
+    )
+    session.add_all([invitation_1, invitation_2])
     session.commit()
