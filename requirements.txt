@@ -1,0 +1,12 @@
+fastapi
+python-dotenv
+PyJWT
+sqlmodel
+
+
+# dev
+pylint
+black
+pytest
+
+
