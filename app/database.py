@@ -1,28 +1,39 @@
 from sqlmodel import create_engine, SQLModel, Session
-from sqlalchemy.orm import sessionmaker
 from contextlib import contextmanager
-from models import *
+from os import remove, getenv
+from app.models import *
 
 
-sqlite_file_name = "database.db"
-sqlite_url = f"sqlite:///{sqlite_file_name}"
+MODE = getenv("MODE", "dev")
 
-import os
+if MODE == "dev":
+    sqlite_file_name = "database.db"
+    DATA_BASE_URL = f"sqlite:///{sqlite_file_name}"
 
-try:
-    os.remove(sqlite_file_name)
-except:
-    pass
+    try:
+        remove(sqlite_file_name)
+    except:
+        pass
+else:
+    DB_USER = getenv("DB_USER")
+    DB_PASS = getenv("DB_PASS")
+    DB_HOST = getenv("DB_HOST")
+    DB_PORT = getenv("DB_PORT")
+    DB_NAME = getenv("DB_NAME")
+    DATA_BASE_URL: str = (
+        f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    )
 
-engine = create_engine(sqlite_url, echo=True)
-# SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
+
+engine = create_engine(DATA_BASE_URL, echo=True)
 
 
 # Create all tables in SQLModel.metadata
 SQLModel.metadata.create_all(bind=engine)
 
+
 @contextmanager
-def get_db() -> Session:
+def get_db() -> Session:  # type: ignore
     db = Session(engine)
     try:
         yield db

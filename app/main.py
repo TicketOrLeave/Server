@@ -1,8 +1,10 @@
 from starlette.requests import Request
 from fastapi import FastAPI
 from app.middleware import AuthMiddleware
+from dotenv import load_dotenv
 
 api = FastAPI()
+load_dotenv()
 api.add_middleware(AuthMiddleware)
 
 
@@ -16,4 +18,4 @@ def read_root(request: Request):
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(api, host='0.0.0.0', port=8000)
+    uvicorn.run(api, host="0.0.0.0", port=8000)

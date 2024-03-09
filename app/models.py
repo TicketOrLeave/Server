@@ -1,10 +1,8 @@
-from sqlmodel import SQLModel
+import uuid
 from datetime import datetime
 from sqlalchemy import event
+from sqlmodel import Field, Relationship, Enum, SQLModel
 from enum import Enum as PyEnum
-from sqlalchemy import Enum
-import uuid
-from sqlmodel import Field, Relationship
 
 
 class AbstractModel(SQLModel):
@@ -36,15 +34,15 @@ class User(TenantModel, table=True):
     )
 
 
-class InvitationState(PyEnum):
+class InvitationStatus(PyEnum):
     pending = "pending"
     accepted = "accepted"
     declined = "declined"
 
 
 class Invitation(TenantModel, table=True):
-    status: InvitationState = Field(
-        sa_column=Enum(InvitationState, native_enum=False, create_constraint=False)
+    status: InvitationStatus = Enum(
+        InvitationStatus, nullable=False, default=InvitationStatus.pending
     )
     user_id: uuid.UUID = Field(foreign_key="user.id")
     organization_id: uuid.UUID = Field(foreign_key="organization.id")
@@ -56,3 +54,40 @@ class Organization(AbstractModel, table=True):
     members: list["User"] = Relationship(
         back_populates="organizations", link_model=UserOrganization
     )
+    events: list["Event"] = Relationship(back_populates="organization")
+
+
+class EventStatus(PyEnum):
+    pending = "pending"
+    accepted = "accepted"
+    declined = "declined"
+
+
+class Event(TenantModel, table=True):
+    title: str = Field(nullable=False)
+    cover_image_url: str = Field(nullable=True)
+    description: str = Field(nullable=False)
+    status: EventStatus = Enum(EventStatus, nullable=False, default=EventStatus.pending)
+    start_date: datetime = Field(nullable=False)
+    end_date: datetime = Field(nullable=False)
+    location: str = Field(nullable=False)
+    max_tickets: int = Field(nullable=False, default=0, description="0 means unlimited")
+    organization_id: uuid.UUID = Field(foreign_key="organization.id")
+    tickets: list["Ticket"] = Relationship(back_populates="event")
+    organization: Organization = Relationship(back_populates="events")
+
+
+class TicketStatus(PyEnum):
+    pending = "pending"
+    accepted = "accepted"
+    declined = "declined"
+
+
+class Ticket(TenantModel, table=True):
+    event_id: uuid.UUID = Field(foreign_key="event.id")
+    status: TicketStatus = Enum(
+        TicketStatus, nullable=False, default=TicketStatus.pending
+    )
+    event: Event = Relationship(back_populates="tickets")
+    owner_email: str = Field(nullable=False)
+    owner_name: str = Field(nullable=False)
