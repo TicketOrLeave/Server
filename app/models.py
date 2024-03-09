@@ -48,6 +48,12 @@ class Invitation(TenantModel, table=True):
     organization_id: uuid.UUID = Field(foreign_key="organization.id")
 
 
+class userRole(PyEnum):
+    owner = "owner"
+    scanner = "scanner"
+    admin = "admin"
+
+
 class Organization(AbstractModel, table=True):
     name: str = Field(nullable=False)
     owner: uuid.UUID = Field(nullable=False, foreign_key="user.id")
@@ -55,6 +61,16 @@ class Organization(AbstractModel, table=True):
         back_populates="organizations", link_model=UserOrganization
     )
     events: list["Event"] = Relationship(back_populates="organization")
+    members_roles: list["UserOrganizationRole"] = Relationship(
+        back_populates="organization"
+    )
+
+
+class UserOrganizationRole(AbstractModel, table=True):
+    user_id: uuid.UUID = Field(foreign_key="user.id")
+    organization_id: uuid.UUID = Field(foreign_key="organization.id")
+    role: userRole = Enum(userRole, nullable=False, default=userRole.scanner)
+    organization: Organization = Relationship(back_populates="members_roles")
 
 
 class EventStatus(PyEnum):
@@ -75,6 +91,7 @@ class Event(TenantModel, table=True):
     organization_id: uuid.UUID = Field(foreign_key="organization.id")
     tickets: list["Ticket"] = Relationship(back_populates="event")
     organization: Organization = Relationship(back_populates="events")
+    attendees_logs: list["AttendeesLog"] = Relationship(back_populates="event")
 
 
 class TicketStatus(PyEnum):
@@ -91,3 +108,17 @@ class Ticket(TenantModel, table=True):
     event: Event = Relationship(back_populates="tickets")
     owner_email: str = Field(nullable=False)
     owner_name: str = Field(nullable=False)
+    attendees_logs: list["AttendeesLog"] = Relationship(back_populates="ticket")
+
+
+class AttendeeStatus(PyEnum):
+    joined = "joined"
+    left = "left"
+
+
+class AttendeesLog(TenantModel, table=True):
+    event_id: uuid.UUID = Field(foreign_key="event.id")
+    ticket_id: uuid.UUID = Field(foreign_key="ticket.id")
+    status: AttendeeStatus = Enum(AttendeeStatus, nullable=False)
+    event: Event = Relationship(back_populates="attendees_logs")
+    ticket: Ticket = Relationship(back_populates="attendees_logs")

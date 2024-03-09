@@ -12,8 +12,9 @@ from sqlmodel import select
 from app.database import get_db
 from app.models import User
 from os import getenv
+from dotenv import load_dotenv
 
-
+load_dotenv()
 SECRET_KEY = getenv("SECRET_KEY")
 
 

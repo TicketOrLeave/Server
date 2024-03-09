@@ -1,3 +1,4 @@
+from typing import Generator
 from sqlmodel import create_engine, SQLModel, Session
 from contextlib import contextmanager
 from os import remove, getenv
@@ -33,7 +34,7 @@ SQLModel.metadata.create_all(bind=engine)
 
 
 @contextmanager
-def get_db() -> Session:  # type: ignore
+def get_db() -> Generator[Session, None, None]:
     db = Session(engine)
     try:
         yield db

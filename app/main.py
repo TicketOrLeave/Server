@@ -2,10 +2,12 @@ from starlette.requests import Request
 from fastapi import FastAPI
 from app.middleware import AuthMiddleware
 from dotenv import load_dotenv
+from app.routers import organization
 
 api = FastAPI()
 load_dotenv()
 api.add_middleware(AuthMiddleware)
+api.include_router(organization.router)
 
 
 @api.get("/")
