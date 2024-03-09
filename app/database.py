@@ -15,7 +15,7 @@ except:
     pass
 
 engine = create_engine(sqlite_url, echo=True)
-SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
+# SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 
 
 # Create all tables in SQLModel.metadata
@@ -23,7 +23,7 @@ SQLModel.metadata.create_all(bind=engine)
 
 @contextmanager
 def get_db() -> Session:
-    db = SessionLocal()
+    db = Session(engine)
     try:
         yield db
     finally:

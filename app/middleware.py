@@ -38,12 +38,16 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
         with get_db() as db:
             statement = select(User).where(User.email == mail)
-            user = db.execute(statement).first()
+            user = db.exec(statement).first()
+
             if not user:
-                user = User(email=mail, name=name, image_url="url")
+                user = User(email=mail, name=name, image_url=url)
                 db.add(user)
                 db.commit()
 
+
+            request.state.username = user.name
+            request.state.user_email = user.email
 
 
         response = await call_next(request)
