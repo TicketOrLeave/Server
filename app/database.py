@@ -1,3 +1,4 @@
+from typing import Generator
 from sqlmodel import create_engine, SQLModel, Session
 from contextlib import contextmanager
 from os import remove, getenv
@@ -28,7 +29,7 @@ else:
 engine = create_engine(DATA_BASE_URL, echo=True)
 
 @contextmanager
-def get_db() -> Session:  # type: ignore
+def get_db() -> Generator[Session, None, None]:
     db = Session(engine)
     try:
         yield db

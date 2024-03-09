@@ -14,6 +14,7 @@ from app.models import User, Organization, UserOrganization, UserRole
 from os import getenv
 from sqlalchemy.orm import joinedload
 
+
 SECRET_KEY = getenv("SECRET_KEY")
 
 

@@ -1,0 +1,36 @@
+Organization
+
+- user can POST an organization and become its owner
+
+- user can GET an organization and see its details
+
+- user GET a list of all organizations related to him
+
+- user can DELETE its own organization
+
+- user can PUT any organization related to him
+  except owner property
+
+User
+
+- user edit its own profile PUT
+
+event
+
+- organization member with owner role or admin role can POST an event
+- organization member with owner role or admin role can DELETE an event
+- organization member with owner role or admin role can PUT an event
+- organization member any role can GET an event
+
+organization
+
+- user can POST an organization and become its owner
+- user can GET organization and see its details if he is a member
+- user can GET a list of all organizations related to him
+- user can DELETE its own organization
+- owner can edit organization details
+- admin and owner can add a member to the organization
+- admin and owner can remove a member from the organization
+- owner can change the role of a member in the organization
+- user can GET a list of all members of the organization
+- user can GET a list of all events of the organization

@@ -7,11 +7,11 @@ from dotenv import load_dotenv
 from app.models import *
 
 load_dotenv()
-
-
+from app.routers import organization
 
 api = FastAPI()
 api.add_middleware(AuthMiddleware)
+api.include_router(organization.router)
 
 
 @api.get("/")
