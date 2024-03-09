@@ -2,7 +2,8 @@ fastapi
 python-dotenv
 PyJWT
 sqlmodel
-
+fastapi-nextauth-jwt
+uvicorn
 
 # dev
 pylint
