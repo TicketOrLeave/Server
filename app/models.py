@@ -20,9 +20,18 @@ def before_update(mapper, connection, target):
     target.updated_at = datetime.now()
 
 
+class UserRole(PyEnum):
+    creator = "creator"
+    admin = "admin"
+    staff = "staff"
+
+
 class UserOrganization(TenantModel, table=True):
     user_id: uuid.UUID = Field(primary_key=True, foreign_key="user.id")
     organization_id: uuid.UUID = Field(primary_key=True, foreign_key="organization.id")
+    user_role: UserRole = Enum(
+        UserRole, nullable=False, default=UserRole.staff
+    )
 
 
 class User(TenantModel, table=True):

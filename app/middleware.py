@@ -10,9 +10,9 @@ from starlette.requests import Request
 from starlette.responses import Response
 from sqlmodel import select
 from app.database import get_db
-from app.models import User
+from app.models import User, Organization, UserOrganization, UserRole
 from os import getenv
-
+from sqlalchemy.orm import joinedload
 
 SECRET_KEY = getenv("SECRET_KEY")
 
@@ -20,8 +20,17 @@ SECRET_KEY = getenv("SECRET_KEY")
 class AuthMiddleware(BaseHTTPMiddleware):
     JWT = NextAuthJWT(secret=SECRET_KEY, check_expiry=True)
 
+    def get_user(self, request: Request):
+        with get_db() as db:
+            # We Make eager loading to load the organizations of the user
+            statement = select(User).options(joinedload(User.organizations)).where(
+                User.email == request.state.user_email)
+
+            user = db.exec(statement).first()
+            return user
+
     async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
+            self, request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
         try:
             decoded_token = self.JWT(request)
@@ -45,9 +54,15 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
             if not user:
                 user = User(email=mail, name=name, image_url=url)
-                db.add(user)
+                organization = Organization(name=f"{name} Organization", owner=user.id)
+
+                db.add_all([user, organization])
+                user_organization = UserOrganization(user_id=user.id, organization_id=organization.id,
+                                                     user_role=UserRole.creator)
+                db.add(user_organization)
                 db.commit()
 
+            request.state.get_user = self.get_user
             request.state.username = user.name
             request.state.user_email = user.email
 

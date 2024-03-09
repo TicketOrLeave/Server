@@ -27,11 +27,6 @@ else:
 
 engine = create_engine(DATA_BASE_URL, echo=True)
 
-
-# Create all tables in SQLModel.metadata
-SQLModel.metadata.create_all(bind=engine)
-
-
 @contextmanager
 def get_db() -> Session:  # type: ignore
     db = Session(engine)
