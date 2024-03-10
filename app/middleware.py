@@ -9,7 +9,7 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.requests import Request
 from starlette.responses import Response
 from sqlmodel import select
-from app.database import get_db
+from app.database import get_db,get_db_session
 from app.models import User, Organization, UserOrganization, UserRole
 from os import getenv
 from sqlalchemy.orm import joinedload
@@ -55,27 +55,25 @@ class AuthMiddleware(BaseHTTPMiddleware):
         exp = decoded_token.get("exp")
         exp_datetime = datetime.utcfromtimestamp(exp)
         url = decoded_token.get("picture")
+        db = next(get_db_session())
 
-        with get_db() as db:
-            statement = select(User).where(User.email == mail)
-            user = db.exec(statement).first()
+        statement = select(User).where(User.email == mail)
+        user = db.exec(statement).first()
 
-            if not user:
-                user = User(email=mail, name=name, image_url=url)
-                organization = Organization(name=f"{name} Organization", owner=user.id)
+        if not user:
+            user = User(email=mail, name=name, image_url=url)
+            organization = Organization(name=f"{name} Organization", owner=user.id)
 
-                db.add_all([user, organization])
-                user_organization = UserOrganization(
-                    user_id=user.id,
-                    organization_id=organization.id,
-                    user_role=UserRole.creator,
-                )
-                db.add(user_organization)
-                db.commit()
+            db.add_all([user, organization])
+            user_organization = UserOrganization(
+                user_id=user.id,
+                organization_id=organization.id,
+                user_role=UserRole.creator,
+            )
+            db.add(user_organization)
+            db.commit()
 
-            request.state.get_user = self.get_user
-            request.state.username = user.name
-            request.state.user_email = user.email
-
+        request.state.user = user
         response = await call_next(request)
+        db.close()
         return response

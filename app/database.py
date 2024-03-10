@@ -1,5 +1,5 @@
 from typing import Generator
-from sqlmodel import create_engine, SQLModel, Session
+from sqlmodel import create_engine, Session
 from contextlib import contextmanager
 from os import remove, getenv
 from app.models import *
@@ -27,6 +27,12 @@ else:
 engine = create_engine(DATA_BASE_URL, echo=True)
 
 
+def get_db_session():
+    db = Session(engine)
+    try:
+        yield db
+    finally:
+        db.close()
 @contextmanager
 def get_db() -> Generator[Session, None, None]:
     db = Session(engine)
@@ -38,6 +44,7 @@ def get_db() -> Generator[Session, None, None]:
 
 def init_db():
     SQLModel.metadata.create_all(bind=engine)
+    return
     with get_db() as db:
         user1 = User(name="user1", email="email1", image_url="url1")
         user2 = User(name="user2", email="email2", image_url="url2")
