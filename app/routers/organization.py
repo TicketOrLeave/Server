@@ -61,11 +61,11 @@ async def organization_members(
     return organization.members
 
 
-# @router.post("/organization", tags=["organization"], response_model=Organization)
-# async def create_organization(request: Request, name: str) -> Organization | Response:
-#     user: User = request.state.get_user(request)
-#     with get_db() as session:
-#         organization = Organization(name=name, owner=user.id)
-#         session.add(organization)
-#         session.commit()
-#     return organization
+@router.post("/organization", tags=["organization"], response_model=Organization)
+async def create_organization(request: Request, name: str) -> Organization | Response:
+    user: User = request.state.get_user(request)
+    with get_db() as session:
+        organization = Organization(name=name, owner=user.id)
+        session.add(organization)
+        session.commit()
+    return organization

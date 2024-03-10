@@ -19,7 +19,8 @@ SECRET_KEY = getenv("SECRET_KEY")
 
 
 class AuthMiddleware(BaseHTTPMiddleware):
-    JWT = NextAuthJWT(secret=SECRET_KEY, check_expiry=True)
+    # TODO: edit this line
+    JWT = NextAuthJWT(secret=SECRET_KEY, check_expiry=True, csrf_methods=["X"])
 
     def get_user(self, request: Request, organizations=False):
         with get_db() as db:

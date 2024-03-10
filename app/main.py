@@ -6,6 +6,7 @@ from app.middleware import AuthMiddleware
 from dotenv import load_dotenv
 from app.models import *
 from app.routers import organization
+from fastapi.middleware.cors import CORSMiddleware
 
 
 @asynccontextmanager
