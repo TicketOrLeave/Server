@@ -21,17 +21,23 @@ SECRET_KEY = getenv("SECRET_KEY")
 class AuthMiddleware(BaseHTTPMiddleware):
     JWT = NextAuthJWT(secret=SECRET_KEY, check_expiry=True)
 
-    def get_user(self, request: Request):
+    def get_user(self, request: Request, organizations=False):
         with get_db() as db:
             # We Make eager loading to load the organizations of the user
-            statement = select(User).options(joinedload(User.organizations)).where(
-                User.email == request.state.user_email)
+            if organizations:
+                statement = (
+                    select(User)
+                    .options(joinedload(User.organizations))
+                    .where(User.email == request.state.user_email)
+                )
+            else:
+                statement = select(User).where(User.email == request.state.user_email)
 
             user = db.exec(statement).first()
             return user
 
     async def dispatch(
-            self, request: Request, call_next: RequestResponseEndpoint
+        self, request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
         try:
             decoded_token = self.JWT(request)
@@ -58,8 +64,11 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 organization = Organization(name=f"{name} Organization", owner=user.id)
 
                 db.add_all([user, organization])
-                user_organization = UserOrganization(user_id=user.id, organization_id=organization.id,
-                                                     user_role=UserRole.creator)
+                user_organization = UserOrganization(
+                    user_id=user.id,
+                    organization_id=organization.id,
+                    user_role=UserRole.creator,
+                )
                 db.add(user_organization)
                 db.commit()
 
