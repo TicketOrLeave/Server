@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime
 from sqlalchemy import event
+from sqlalchemy.orm import relationship
 from sqlmodel import Field, Relationship, Enum, SQLModel
 from enum import Enum as PyEnum
 
@@ -26,20 +27,21 @@ class UserRole(PyEnum):
     staff = "staff"
 
 
-class UserOrganization(TenantModel, table=True):
+class UserOrganizationRole(TenantModel, table=True):
     user_id: uuid.UUID = Field(primary_key=True, foreign_key="user.id")
     organization_id: uuid.UUID = Field(primary_key=True, foreign_key="organization.id")
-    user_role: UserRole = Enum(
-        UserRole, nullable=False, default=UserRole.staff
+    user_role: UserRole = Enum(UserRole, nullable=False, default=UserRole.staff)
+    organization: "Organization" = Relationship(
+        back_populates="members_roles",
     )
 
 
 class User(TenantModel, table=True):
     name: str = Field(nullable=False)
-    email: str = Field(nullable=False)
+    email: str = Field(nullable=False, unique=True)
     image_url: str = Field(nullable=True)
     organizations: list["Organization"] = Relationship(
-        back_populates="members", link_model=UserOrganization
+        back_populates="members", link_model=UserOrganizationRole
     )
 
 
@@ -49,37 +51,27 @@ class InvitationStatus(PyEnum):
     declined = "declined"
 
 
+class Organization(AbstractModel, table=True):
+    name: str = Field(nullable=False)
+    owner: uuid.UUID = Field(nullable=False, foreign_key="user.id")
+    members: list["User"] = Relationship(
+        back_populates="organizations", link_model=UserOrganizationRole
+    )
+    events: list["Event"] = Relationship(back_populates="organization")
+    members_roles: list["UserOrganizationRole"] = Relationship(
+        back_populates="organization",
+        sa_relationship=relationship(cascade="all, delete-orphan"),
+    )
+
+
 class Invitation(TenantModel, table=True):
+    role: UserRole = Enum(UserRole, nullable=False, default=UserRole.staff)
     status: InvitationStatus = Enum(
         InvitationStatus, nullable=False, default=InvitationStatus.pending
     )
     user_id: uuid.UUID = Field(foreign_key="user.id")
     organization_id: uuid.UUID = Field(foreign_key="organization.id")
-
-
-class userRole(PyEnum):
-    owner = "owner"
-    scanner = "scanner"
-    admin = "admin"
-
-
-class Organization(AbstractModel, table=True):
-    name: str = Field(nullable=False)
-    owner: uuid.UUID = Field(nullable=False, foreign_key="user.id")
-    members: list["User"] = Relationship(
-        back_populates="organizations", link_model=UserOrganization
-    )
-    events: list["Event"] = Relationship(back_populates="organization")
-    members_roles: list["UserOrganizationRole"] = Relationship(
-        back_populates="organization"
-    )
-
-
-class UserOrganizationRole(AbstractModel, table=True):
-    user_id: uuid.UUID = Field(foreign_key="user.id")
-    organization_id: uuid.UUID = Field(foreign_key="organization.id")
-    role: userRole = Enum(userRole, nullable=False, default=userRole.scanner)
-    organization: Organization = Relationship(back_populates="members_roles")
+    inviter_id: uuid.UUID = Field(foreign_key="user.id")
 
 
 class EventStatus(PyEnum):

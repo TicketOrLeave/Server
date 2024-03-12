@@ -4,6 +4,7 @@ PyJWT
 sqlmodel
 fastapi-nextauth-jwt
 uvicorn
+pydantic[email]
 
 # dev
 pylint

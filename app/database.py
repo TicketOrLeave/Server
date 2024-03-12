@@ -48,8 +48,8 @@ def init_db():
     SQLModel.metadata.create_all(bind=engine)
     return
     with get_db() as db:
-        user1 = User(name="user1", email="email1", image_url="url1")
-        user2 = User(name="user2", email="email2", image_url="url2")
+        user1 = User(name="user1", email="email1@gmail.com", image_url="url1")
+        user2 = User(name="user2", email="email2@gmail.com", image_url="url2")
         user3 = User(
             name="emad", email="emadanwer.official@gmail.com", image_url="url3"
         )
@@ -63,16 +63,16 @@ def init_db():
         db.add_all([org1, org2])
         db.commit()
 
-        user_org1 = UserOrganization(
+        user_org1 = UserOrganizationRole(
             user_id=user1.id, organization_id=org1.id, user_role=UserRole.creator
         )
-        user_org2 = UserOrganization(
+        user_org2 = UserOrganizationRole(
             user_id=user2.id, organization_id=org2.id, user_role=UserRole.creator
         )
-        user3_org1 = UserOrganization(
+        user3_org1 = UserOrganizationRole(
             user_id=user3.id, organization_id=org1.id, user_role=UserRole.creator
         )
-        user3_org2 = UserOrganization(
+        user3_org2 = UserOrganizationRole(
             user_id=user3.id, organization_id=org2.id, user_role=UserRole.creator
         )
         db.add_all([user_org1, user_org2, user3_org1, user3_org2])

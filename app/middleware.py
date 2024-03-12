@@ -10,7 +10,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 from sqlmodel import select
 from app.database import get_db, get_db_session
-from app.models import User, Organization, UserOrganization, UserRole
+from app.models import User, Organization, UserOrganizationRole, UserRole
 from os import getenv
 from sqlalchemy.orm import joinedload
 
@@ -65,7 +65,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
             organization = Organization(name=f"{name} Organization", owner=user.id)
 
             db.add_all([user, organization])
-            user_organization = UserOrganization(
+            user_organization = UserOrganizationRole(
                 user_id=user.id,
                 organization_id=organization.id,
                 user_role=UserRole.creator,
