@@ -15,7 +15,7 @@ router = APIRouter()
     "/organization", tags=["organization"], response_model=OrganizationsResponse
 )
 async def user_organizations(
-        request: Request,
+    request: Request,
 ) -> OrganizationsResponse:
     user: User = request.state.user
     return OrganizationsResponse(organizations=user.organizations)
@@ -26,8 +26,9 @@ async def user_organizations(
     tags=["organization"],
     response_model=Organization,
 )
-async def organization(request: Request, organization_id: UUID,
-                       db: Session = Depends(get_db_session)) -> Organization | None:
+async def organization(
+    request: Request, organization_id: UUID, db: Session = Depends(get_db_session)
+) -> Organization | None:
     user: User = request.state.user
 
     organization: Optional[Organization] = next(
@@ -42,7 +43,7 @@ async def organization(request: Request, organization_id: UUID,
 
 @router.get("/organization/{organization_id}/members", tags=["organization"])
 async def organization_members(
-        request: Request, organization_id: UUID, db: Session = Depends(get_db_session)
+    request: Request, organization_id: UUID, db: Session = Depends(get_db_session)
 ) -> list[User | None]:
     user: User = request.state.user
 
@@ -54,28 +55,47 @@ async def organization_members(
         # unauthorized
         raise HTTPException(status_code=401, detail="Organization not found")
 
-    organization = db.get(
-        Organization, organization_id, options=[joinedload(Organization.members)]
-    )
-
     return organization.members
 
 
 @router.post("/organization", tags=["organization"], response_model=Organization)
-async def create_organization(request: Request, name: str,
-                              db: Session = Depends(get_db_session)) -> Organization | Response:
+async def create_organization(
+    request: Request, name: str, db: Session = Depends(get_db_session)
+) -> Organization | Response:
     user: User = request.state.user
     try:
         db.begin()
         organization = Organization(name=name, owner=user.id)
         db.add(organization)
         db.commit()
-        user_organization = UserOrganization(user_id=user.id, organization_id=organization.id,
-                                             user_role=UserRole.creator)
+        user_organization = UserOrganization(
+            user_id=user.id, organization_id=organization.id, user_role=UserRole.creator
+        )
         db.add(user_organization)
         db.commit()
     except:
         db.rollback()
         raise
-    print(organization.name, organization.owner)
     return organization
+
+
+@router.delete("/organization/{organization_id}", tags=["organization"])
+async def delete_organization(request: Request, organization_id: UUID) -> Response:
+    user: User = request.state.user
+    db = request.state.db
+    organization: Optional[Organization] = next(
+        (org for org in user.organizations if org.id == organization_id), None
+    )
+    if organization is None:
+        raise HTTPException(status_code=401, detail="Organization not found")
+    if organization.owner != user.id:
+        raise HTTPException(
+            status_code=401, detail="User is not the owner of the organization"
+        )
+    try:
+        db.delete(organization)
+        db.commit()
+    except:
+        db.rollback()
+        raise
+    return Response(status_code=204)

@@ -36,5 +36,6 @@ def read_root(request: Request):
 
 if __name__ == "__main__":
     import uvicorn
+
     SQLModel.metadata.create_all(bind=engine)
     uvicorn.run(api, host="0.0.0.0", port=8000)

@@ -9,7 +9,7 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.requests import Request
 from starlette.responses import Response
 from sqlmodel import select
-from app.database import get_db,get_db_session
+from app.database import get_db, get_db_session
 from app.models import User, Organization, UserOrganization, UserRole
 from os import getenv
 from sqlalchemy.orm import joinedload
@@ -74,6 +74,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
             db.commit()
 
         request.state.user = user
+        request.state.db = db
         response = await call_next(request)
         db.close()
         return response

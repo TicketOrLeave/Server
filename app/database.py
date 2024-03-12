@@ -33,6 +33,8 @@ def get_db_session():
         yield db
     finally:
         db.close()
+
+
 @contextmanager
 def get_db() -> Generator[Session, None, None]:
     db = Session(engine)
@@ -55,7 +57,7 @@ def init_db():
         db.commit()
 
         org1 = Organization(
-            id="9a0e4beb-0233-48cb-a3e5-b39852c3abf5", name="org1", owner=user1.id
+            id="9a0e4beb-0233-48cb-a3e5-b39852c3abf5", name="org1", owner=user3.id
         )
         org2 = Organization(name="org2", owner=user2.id)
         db.add_all([org1, org2])
