@@ -21,8 +21,6 @@ async def lifespan(app: FastAPI):
 
 
 api = FastAPI(lifespan=lifespan)
-
-
 api.add_middleware(AuthMiddleware)
 api.include_router(organization.router)
 

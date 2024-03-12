@@ -43,6 +43,10 @@ class User(TenantModel, table=True):
     organizations: list["Organization"] = Relationship(
         back_populates="members", link_model=UserOrganizationRole
     )
+    invitations: list["Invitation"] = Relationship(
+        back_populates="user",
+        sa_relationship=relationship(foreign_keys="Invitation.user_id"),
+    )
 
 
 class InvitationStatus(PyEnum):
@@ -72,6 +76,14 @@ class Invitation(TenantModel, table=True):
     user_id: uuid.UUID = Field(foreign_key="user.id")
     organization_id: uuid.UUID = Field(foreign_key="organization.id")
     inviter_id: uuid.UUID = Field(foreign_key="user.id")
+    inviter: User = Relationship(
+        back_populates="invitations",
+        sa_relationship=relationship(foreign_keys="Invitation.inviter_id"),
+    )
+    user: User = Relationship(
+        back_populates="invitations",
+        sa_relationship=relationship(foreign_keys="Invitation.user_id"),
+    )
 
 
 class EventStatus(PyEnum):

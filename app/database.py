@@ -24,7 +24,7 @@ else:
     DATA_BASE_URL: str = (
         f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
     )
-engine = create_engine(DATA_BASE_URL, echo=True)
+engine = create_engine(DATA_BASE_URL, echo=False)
 
 
 def get_db_session():
@@ -46,7 +46,7 @@ def get_db() -> Generator[Session, None, None]:
 
 def init_db():
     SQLModel.metadata.create_all(bind=engine)
-    return
+
     with get_db() as db:
         user1 = User(name="user1", email="email1@gmail.com", image_url="url1")
         user2 = User(name="user2", email="email2@gmail.com", image_url="url2")
