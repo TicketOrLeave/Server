@@ -13,6 +13,9 @@ from app.database import get_db, get_db_session
 from app.models import User, Organization, UserOrganizationRole, UserRole
 from os import getenv
 from sqlalchemy.orm import joinedload
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 SECRET_KEY = getenv("SECRET_KEY")

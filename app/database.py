@@ -3,6 +3,7 @@ from sqlmodel import create_engine, Session
 from contextlib import contextmanager
 from os import remove, getenv
 from app.models import *
+from dotenv import load_dotenv
 
 
 MODE = getenv("MODE", "dev")
@@ -46,7 +47,7 @@ def get_db() -> Generator[Session, None, None]:
 
 def init_db():
     SQLModel.metadata.create_all(bind=engine)
-
+    return
     with get_db() as db:
         user1 = User(name="user1", email="email1@gmail.com", image_url="url1")
         user2 = User(name="user2", email="email2@gmail.com", image_url="url2")

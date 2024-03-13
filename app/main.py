@@ -3,18 +3,14 @@ from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from app.database import engine, init_db
 from app.middleware import AuthMiddleware
-from dotenv import load_dotenv
 from app.models import *
 from app.routers import organization
-from fastapi.middleware.cors import CORSMiddleware
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Set up
-    load_dotenv()
     init_db()
-
     yield
     # Tear down
     SQLModel.metadata.drop_all(bind=engine)
