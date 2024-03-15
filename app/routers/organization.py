@@ -26,14 +26,12 @@ from sqlalchemy.orm import joinedload
 router = APIRouter()
 
 
-@router.get(
-    "/organization", tags=["organization"], response_model=OrganizationsResponse
-)
+@router.get("/organization", tags=["organization"], response_model=list[Organization])
 async def user_organizations(
     request: Request,
 ) -> OrganizationsResponse:
     user: User = request.state.user
-    return OrganizationsResponse(organizations=user.organizations)
+    return user.organizations
 
 
 @router.get(
