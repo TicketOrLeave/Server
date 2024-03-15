@@ -3,7 +3,6 @@ from sqlmodel import create_engine, Session
 from contextlib import contextmanager
 from os import remove, getenv
 from app.models import *
-from dotenv import load_dotenv
 
 
 MODE = getenv("MODE", "dev")
@@ -54,14 +53,16 @@ def init_db():
         user3 = User(
             name="emad", email="emadanwer.official@gmail.com", image_url="url3"
         )
-        db.add_all([user1, user2, user3])
+        user4 = User(name="user4", email="email4@gmail.com", image_url="url4")
+        db.add_all([user1, user2, user3, user4])
         db.commit()
 
         org1 = Organization(
             id="9a0e4beb-0233-48cb-a3e5-b39852c3abf5", name="org1", owner=user3.id
         )
         org2 = Organization(name="org2", owner=user2.id)
-        db.add_all([org1, org2])
+        org3 = Organization(name="org3", owner=user4.id)
+        db.add_all([org1, org2, org3])
         db.commit()
 
         user_org1 = UserOrganizationRole(
@@ -77,4 +78,13 @@ def init_db():
             user_id=user3.id, organization_id=org2.id, user_role=UserRole.creator
         )
         db.add_all([user_org1, user_org2, user3_org1, user3_org2])
+        db.commit()
+        invitation1 = Invitation(
+            user_id=user3.id,
+            inviter_id=user4.id,
+            organization_id=org3.id,
+            role=UserRole.staff,
+            status="pending",
+        )
+        db.add(invitation1)
         db.commit()

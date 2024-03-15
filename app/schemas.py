@@ -10,7 +10,6 @@ class OrganizationsResponse(BaseModel):
 
 class OrganizationInvitationRequest(BaseModel):
     email: EmailStr
-    role: UserRole = UserRole.staff
 
 
 class Inviter(BaseModel):
@@ -23,16 +22,24 @@ class InvitedUser(Inviter):
     pass
 
 
-class InvitationResponse(BaseModel):
+class OrganizationInvitationResponse(BaseModel):
     id: UUID
-    role: UserRole
     status: str
-    organization_id: UUID
     created_at: datetime
     updated_at: datetime
     inviter: Inviter
     user: InvitedUser
 
 
-class OrganizationInvitationsResponse(BaseModel):
-    invitations: list[InvitationResponse]
+class UserInvitationOrganization(BaseModel):
+    id: UUID
+    name: str
+
+
+class UserInvitation(BaseModel):
+    id: UUID
+    status: str
+    created_at: datetime
+    updated_at: datetime
+    inviter: Inviter
+    organization: UserInvitationOrganization

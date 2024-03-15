@@ -4,7 +4,8 @@ from contextlib import asynccontextmanager
 from app.database import engine, init_db
 from app.middleware import AuthMiddleware
 from app.models import *
-from app.routers import organization
+from app.routers.organizations import router as organizations_router
+from app.routers.invitations import router as invitations_router
 
 
 @asynccontextmanager
@@ -18,7 +19,8 @@ async def lifespan(app: FastAPI):
 
 api = FastAPI(lifespan=lifespan)
 api.add_middleware(AuthMiddleware)
-api.include_router(organization.router)
+api.include_router(organizations_router, prefix="/organizations")
+api.include_router(invitations_router, prefix="/invitations")
 
 
 @api.get("/")
