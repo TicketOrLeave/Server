@@ -26,7 +26,7 @@ from sqlalchemy.orm import joinedload
 router = APIRouter()
 
 
-@router.get("/organization", tags=["organization"], response_model=list[Organization])
+@router.get("/organizations", tags=["organizations"], response_model=list[Organization])
 async def user_organizations(
     request: Request,
 ) -> OrganizationsResponse:
@@ -35,11 +35,11 @@ async def user_organizations(
 
 
 @router.get(
-    "/organization/{organization_id}",
-    tags=["organization"],
+    "/organizations/{organization_id}",
+    tags=["organizations"],
     response_model=Organization,
 )
-async def organization(
+async def organizations(
     request: Request, organization_id: UUID, db: Session = Depends(get_db_session)
 ) -> Organization | None:
     user: User = request.state.user
@@ -54,7 +54,9 @@ async def organization(
     return organization
 
 
-@router.get("/organization/{organization_id}/members", tags=["organization", "member"])
+@router.get(
+    "/organizations/{organization_id}/members", tags=["organizations", "members"]
+)
 async def organization_members(
     request: Request, organization_id: UUID, db: Session = Depends(get_db_session)
 ) -> list[User | None]:
@@ -71,7 +73,7 @@ async def organization_members(
     return organization.members
 
 
-@router.post("/organization", tags=["organization"], response_model=Organization)
+@router.post("/organizations", tags=["organizations"], response_model=Organization)
 async def create_organization(
     request: Request, name: str, db: Session = Depends(get_db_session)
 ) -> Organization | Response:
@@ -93,7 +95,7 @@ async def create_organization(
     return organization
 
 
-@router.delete("/organization/{organization_id}", tags=["organization"])
+@router.delete("/organizations/{organization_id}", tags=["organizations"])
 async def delete_organization(request: Request, organization_id: UUID) -> Response:
     user: User = request.state.user
     db = request.state.db
@@ -116,7 +118,8 @@ async def delete_organization(request: Request, organization_id: UUID) -> Respon
 
 
 @router.post(
-    "/organization/{organization_id}/invitation", tags=["organization", "invitation"]
+    "/organizations/{organization_id}/invitations",
+    tags=["organizations", "invitations"],
 )
 async def invite_member(
     request: Request,
@@ -205,7 +208,8 @@ async def invite_member(
 
 
 @router.get(
-    "/organization/{organization_id}/invitation", tags=["organization", "invitation"]
+    "/organizations/{organization_id}/invitations",
+    tags=["organizations", "invitations"],
 )
 async def get_organization_invitations(
     request: Request,
@@ -262,8 +266,8 @@ async def get_organization_invitations(
 
 
 @router.delete(
-    "/organization/{organization_id}/invitation/{invitation_id}",
-    tags=["organization", "invitation"],
+    "/organizations/{organization_id}/invitations/{invitation_id}",
+    tags=["organizations", "invitations"],
 )
 async def delete_organization_invitation(
     request: Request,
