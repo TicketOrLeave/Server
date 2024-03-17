@@ -47,6 +47,9 @@ class User(TenantModel, table=True):
         back_populates="user",
         sa_relationship=relationship(foreign_keys="Invitation.user_id"),
     )
+    current_organization_id: uuid.UUID = Field(
+        foreign_key="organization.id", nullable=True
+    )
 
 
 class InvitationStatus(PyEnum):
@@ -66,6 +69,7 @@ class Organization(AbstractModel, table=True):
         back_populates="organization",
         sa_relationship=relationship(cascade="all, delete-orphan"),
     )
+    invitations: list["Invitation"] = Relationship(back_populates="organization")
 
 
 class Invitation(TenantModel, table=True):
@@ -83,6 +87,10 @@ class Invitation(TenantModel, table=True):
     user: User = Relationship(
         back_populates="invitations",
         sa_relationship=relationship(foreign_keys="Invitation.user_id"),
+    )
+    organization: Organization = Relationship(
+        back_populates="invitations",
+        sa_relationship=relationship(foreign_keys="Invitation.organization_id"),
     )
 
 

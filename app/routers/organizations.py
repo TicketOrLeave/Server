@@ -76,7 +76,6 @@ async def create_organization(
         )
         db.add(user_organization)
         db.commit()
-        db.refresh(organization)
     except:
         db.rollback()
         raise

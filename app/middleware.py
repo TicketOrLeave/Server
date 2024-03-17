@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 from fastapi_nextauth_jwt import NextAuthJWT
 from fastapi_nextauth_jwt.exceptions import (
     InvalidTokenError,
@@ -43,6 +44,9 @@ class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(
         self, request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
+        # ignore docs, /openapi.json and /redoc
+        if request.url.path in ["/docs", "/openapi.json", "/redoc"]:
+            return await call_next(request)
         try:
             decoded_token = self.JWT(request)
         except InvalidTokenError:
@@ -65,18 +69,22 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
         if not user:
             user = User(email=mail, name=name, image_url=url)
-            organization = Organization(name=f"{name} Organization", owner=user.id)
-
-            db.add_all([user, organization])
-            user_organization = UserOrganizationRole(
-                user_id=user.id,
-                organization_id=organization.id,
-                user_role=UserRole.creator,
-            )
-            db.add(user_organization)
+            db.add(user)
             db.commit()
+            db.refresh(user)
+
+        # get user current organization
+        organization: Optional[Organization] = next(
+            (
+                org
+                for org in user.organizations
+                if org.id == user.current_organization_id
+            ),
+            None,
+        )
 
         request.state.user = user
+        request.state.current_organization = organization
         request.state.db = db
         response = await call_next(request)
         db.close()

@@ -21,6 +21,8 @@ from app.schemas import (
 )
 from uuid import UUID
 from sqlmodel import Session, select
+from fastapi import APIRouter
+from sqlalchemy.orm import joinedload
 
 router = APIRouter()
 
@@ -35,17 +37,15 @@ async def user_invitations(
     user: User = request.state.user
     invitations: list[Invitation] = db.exec(
         select(Invitation)
+        .options(joinedload(Invitation.inviter))
+        .options(joinedload(Invitation.organization))
         .where(Invitation.user_id == user.id)
         .where(Invitation.status == InvitationStatus.pending)
     ).all()
     invitations_response: list[UserInvitation] = []
     for invitation in invitations:
-        inviter: User = db.exec(
-            select(User).where(User.id == invitation.inviter_id)
-        ).first()
-        organization: Organization = db.exec(
-            select(Organization).where(Organization.id == invitation.organization_id)
-        ).first()
+        inviter = invitation.inviter
+        organization = invitation.organization
         invitation_response = UserInvitation(
             id=invitation.id,
             status=invitation.status,
@@ -178,16 +178,15 @@ async def get_organization_invitations(
     invitations: list[Invitation] = db.exec(
         select(
             Invitation,
-        ).where(Invitation.organization_id == organization_id)
+        )
+        .where(Invitation.organization_id == organization_id)
+        .options(joinedload(Invitation.inviter))
+        .options(joinedload(Invitation.user))
     ).all()
     invitations_response: list[OrganizationInvitationResponse] = []
     for invitation in invitations:
-        inviter: User = db.exec(
-            select(User).where(User.id == invitation.inviter_id)
-        ).first()
-        invited_user: User = db.exec(
-            select(User).where(User.id == invitation.user_id)
-        ).first()
+        inviter: User = invitation.inviter
+        invited_user: User = invitation.user
         invitation_response = OrganizationInvitationResponse(
             id=invitation.id,
             role=invitation.role,

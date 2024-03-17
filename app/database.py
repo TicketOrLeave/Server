@@ -88,3 +88,5 @@ def init_db():
         )
         db.add(invitation1)
         db.commit()
+        user3.current_organization_id = org1.id
+        db.commit()
