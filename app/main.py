@@ -1,5 +1,5 @@
 from starlette.requests import Request
-from fastapi import FastAPI
+from fastapi import FastAPI, BackgroundTasks
 from contextlib import asynccontextmanager
 from app.database import engine, init_db
 from app.middleware import AuthMiddleware

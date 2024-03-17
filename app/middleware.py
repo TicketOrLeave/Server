@@ -11,10 +11,12 @@ from starlette.requests import Request
 from starlette.responses import Response
 from sqlmodel import select
 from app.database import get_db, get_db_session
-from app.models import User, Organization, UserOrganizationRole, UserRole
+from app.models import User, Organization
 from os import getenv
 from sqlalchemy.orm import joinedload
 from dotenv import load_dotenv
+from app.utilities.mail import EmailSender
+import asyncio
 
 load_dotenv()
 
@@ -72,7 +74,16 @@ class AuthMiddleware(BaseHTTPMiddleware):
             db.add(user)
             db.commit()
             db.refresh(user)
-
+            # send welcome email
+            main = EmailSender()
+            asyncio.create_task(
+                main.send_email(
+                    mail,
+                    "Welcome to TicketOrLeave it!",
+                    "welcome.html",
+                    username=name,
+                )
+            )
         # get user current organization
         organization: Optional[Organization] = next(
             (

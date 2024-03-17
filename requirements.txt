@@ -5,7 +5,7 @@ sqlmodel
 fastapi-nextauth-jwt
 uvicorn
 pydantic[email]
-
+fastapi-mail
 # dev
 pylint
 black
