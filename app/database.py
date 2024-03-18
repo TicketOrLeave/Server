@@ -54,7 +54,8 @@ def init_db():
             name="emad", email="emadanwer.official@gmail.com", image_url="url3"
         )
         user4 = User(name="user4", email="email4@gmail.com", image_url="url4")
-        db.add_all([user1, user2, user3, user4])
+        user_5 = User(name="user5", email="0mda.7f@gmail.com", image_url="url5")
+        db.add_all([user1, user2, user3, user4, user_5])
         db.commit()
 
         org1 = Organization(

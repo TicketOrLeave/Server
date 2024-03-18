@@ -1,6 +1,6 @@
 import select
 from typing import Optional
-from fastapi import APIRouter, Body, HTTPException, Response, Depends
+from fastapi import APIRouter, BackgroundTasks, Body, HTTPException, Response, Depends
 from app.models import (
     User,
     Organization,
@@ -23,6 +23,7 @@ from uuid import UUID
 from sqlmodel import Session, select
 from fastapi import APIRouter
 from sqlalchemy.orm import joinedload
+from app.utilities.mail import EmailSender
 
 router = APIRouter()
 
@@ -73,10 +74,10 @@ async def user_invitations(
 async def invite_member(
     request: Request,
     organization_id: UUID,
+    background: BackgroundTasks,
     invitation: OrganizationInvitationRequest = Body(...),
     db: Session = Depends(get_db_session),
 ) -> Response:
-
     # current user can invite to organization
     user: User = request.state.user
     organization: Optional[Organization] = next(
@@ -139,7 +140,19 @@ async def invite_member(
     try:
         db.add(user_invitation)
         db.commit()
+        db.refresh(user_invitation)
         # TODO send email to invited user with invitation link
+        email_sender = EmailSender()
+        email_sender.send_email_background(
+            background,
+            invited_user.email,
+            f"You have been invited to join {organization.name} organization!",
+            "invitation.html",
+            organization_name=organization.name,
+            invitername=user.name,
+            invitation_id=user_invitation.id,
+            username=invited_user.name,
+        )
     except:
         db.rollback()
         raise
