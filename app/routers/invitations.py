@@ -1,5 +1,5 @@
 import select
-from typing import Optional
+from typing import Optional, Literal
 from fastapi import APIRouter, BackgroundTasks, Body, HTTPException, Response, Depends
 from app.models import (
     User,
@@ -18,6 +18,7 @@ from app.schemas import (
     InvitedUser,
     UserInvitation,
     UserInvitationOrganization,
+    InvitationStatusRequest,
 )
 from uuid import UUID
 from sqlmodel import Session, select
@@ -29,7 +30,9 @@ router = APIRouter()
 
 
 @router.get(
-    "/", tags=["organizations", "invitations"], response_model=list[UserInvitation]
+    "/",
+    tags=["organizations", "invitations", "user"],
+    response_model=list[UserInvitation],
 )
 async def user_invitations(
     request: Request,
@@ -256,6 +259,34 @@ async def delete_organization_invitation(
         raise HTTPException(status_code=404, detail="Invitation not found")
     try:
         db.delete(invitation)
+        db.commit()
+    except:
+        db.rollback()
+        raise
+    return Response(status_code=204)
+
+
+@router.put(
+    "/{invitation_id}",
+    tags=["invitations"],
+)
+async def invitation_status(
+    request: Request,
+    invitation_id: UUID,
+    status_request: InvitationStatusRequest = Body(...),
+    db: Session = Depends(get_db_session),
+) -> Response:
+    user: User = request.state.user
+    invitation: Invitation = db.exec(
+        select(Invitation)
+        .where(Invitation.id == invitation_id)
+        .where(Invitation.user_id == user.id)
+    ).first()
+    if invitation is None:
+        raise HTTPException(status_code=404, detail="Invitation not found")
+    invitation.status = status_request.status
+    try:
+        db.add(invitation)
         db.commit()
     except:
         db.rollback()

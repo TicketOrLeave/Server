@@ -1,7 +1,8 @@
+from typing import Literal
 from pydantic import BaseModel, EmailStr, Field
 from uuid import UUID
 from datetime import datetime
-from app.models import User, Organization, UserRole
+from app.models import User, Organization, UserRole, InvitationStatus
 
 
 class OrganizationsResponse(BaseModel):
@@ -43,3 +44,7 @@ class UserInvitation(BaseModel):
     updated_at: datetime
     inviter: Inviter
     organization: UserInvitationOrganization
+
+
+class InvitationStatusRequest(BaseModel):
+    status: Literal[InvitationStatus.accepted, InvitationStatus.rejected] = Field(...)

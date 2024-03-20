@@ -52,10 +52,10 @@ class User(TenantModel, table=True):
     )
 
 
-class InvitationStatus(PyEnum):
+class InvitationStatus(str, PyEnum):
     pending = "pending"
     accepted = "accepted"
-    declined = "declined"
+    rejected = "rejected"
 
 
 class Organization(AbstractModel, table=True):
