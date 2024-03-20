@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from pydantic import BaseModel
 from sqlalchemy import event
 from sqlalchemy.orm import relationship
 from sqlmodel import Field, Relationship, Enum, SQLModel
@@ -95,24 +96,38 @@ class Invitation(TenantModel, table=True):
 
 
 class EventStatus(PyEnum):
-    pending = "pending"
-    accepted = "accepted"
-    declined = "declined"
+    SCHEDULED = "Scheduled"
+    ONGOING = "Ongoing"
+    FINISHED = "Finished"
+    PENDING = "Pending"
 
 
 class Event(TenantModel, table=True):
-    title: str = Field(nullable=False)
+    name: str = Field(nullable=False)
     cover_image_url: str = Field(nullable=True)
-    description: str = Field(nullable=False)
-    status: EventStatus = Enum(EventStatus, nullable=False, default=EventStatus.pending)
+    description: str = Field(nullable=True)
+    status: EventStatus = Enum(EventStatus, nullable=False, default=EventStatus.SCHEDULED)
     start_date: datetime = Field(nullable=False)
     end_date: datetime = Field(nullable=False)
-    location: str = Field(nullable=False)
+    location: str = Field(nullable=True)
     max_tickets: int = Field(nullable=False, default=0, description="0 means unlimited")
     organization_id: uuid.UUID = Field(foreign_key="organization.id")
     tickets: list["Ticket"] = Relationship(back_populates="event")
     organization: Organization = Relationship(back_populates="events")
     attendees_logs: list["AttendeesLog"] = Relationship(back_populates="event")
+
+
+class EventResponse(BaseModel):
+    id: uuid.UUID
+    name: str
+    start_date: datetime
+    end_date: datetime
+    location: str
+    description: str
+    cover_image_url: str
+    max_tickets: int
+    created_at: datetime
+    updated_at: datetime
 
 
 class TicketStatus(PyEnum):

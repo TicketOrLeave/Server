@@ -6,7 +6,7 @@ from app.middleware import AuthMiddleware
 from app.models import *
 from app.routers.organizations import router as organizations_router
 from app.routers.invitations import router as invitations_router
-
+from app.routers.events import router as events_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -21,6 +21,7 @@ api = FastAPI(lifespan=lifespan)
 api.add_middleware(AuthMiddleware)
 api.include_router(organizations_router, prefix="/organizations")
 api.include_router(invitations_router, prefix="/invitations")
+api.include_router(events_router, prefix="/events")
 
 
 @api.get("/")
