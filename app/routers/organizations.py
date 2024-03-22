@@ -8,7 +8,7 @@ from app.models import (
 )
 from app.database import get_db_session
 from starlette.requests import Request
-from app.schemas import OrganizationsResponse
+from app.schemas import OrganizationsResponse, OrganizationRequestBody
 from uuid import UUID
 from sqlmodel import Session
 
@@ -63,12 +63,14 @@ async def organization_members(
 
 @router.post("/", tags=["organizations"], response_model=Organization)
 async def create_organization(
-    request: Request, name: str, db: Session = Depends(get_db_session)
+    request: Request,
+    request_body: OrganizationRequestBody,
+    db: Session = Depends(get_db_session),
 ) -> Organization | Response:
     user: User = request.state.user
     try:
         db.begin()
-        organization = Organization(name=name, owner=user.id)
+        organization = Organization(owner=user.id, **request_body.model_dump())
         db.add(organization)
         db.commit()
         user_organization = UserOrganizationRole(
@@ -76,9 +78,10 @@ async def create_organization(
         )
         db.add(user_organization)
         db.commit()
-    except:
+    except Exception as e:
         db.rollback()
-        raise
+        raise HTTPException(status_code=400, detail="Organization not created")
+    db.refresh(organization)
     return organization
 
 

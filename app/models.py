@@ -82,12 +82,10 @@ class Organization(AbstractModel, table=True):
         sa_relationship=relationship(cascade="all, delete-orphan"),
     )
     invitations: list["Invitation"] = Relationship(back_populates="organization")
-
-    # __table_args__ = (
-    #     ForeignKeyConstraint(
-    #         ["owner"], ["user.id"], name="fk_organization_owner_user_id"
-    #     ),
-    # )
+    contact_email: str = Field(nullable=False)  # TODO:unique=True
+    description: str = Field(nullable=True)
+    logo_url: str = Field(nullable=True)
+    website: str = Field(nullable=True)
 
 
 class Invitation(TenantModel, table=True):
@@ -134,31 +132,6 @@ class Event(TenantModel, table=True):
     tickets: list["Ticket"] = Relationship(back_populates="event")
     organization: Organization = Relationship(back_populates="events")
     attendees_logs: list["AttendeesLog"] = Relationship(back_populates="event")
-
-
-class EventResponse(BaseModel):
-    id: uuid.UUID
-    name: str
-    status: EventStatus
-    start_date: datetime
-    end_date: datetime
-    location: str | None
-    description: str | None
-    cover_image_url: str | None
-    max_tickets: int
-    created_at: datetime
-    updated_at: datetime
-
-
-class EventRequest(BaseModel):
-    name: str
-    start_date: datetime
-    end_date: datetime
-    max_tickets: int = 0
-    orgId: str
-    description: str = None
-    location: str = None
-    cover_image_url: str = None
 
 
 class TicketStatus(str, PyEnum):

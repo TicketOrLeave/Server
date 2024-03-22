@@ -3,8 +3,6 @@ from typing import Optional
 from uuid import UUID
 from fastapi import APIRouter, HTTPException, Depends, Response
 from app.models import (
-    EventRequest,
-    EventResponse,
     EventStatus,
     Organization,
     User,
@@ -15,6 +13,8 @@ from app.database import get_db_session
 from starlette.requests import Request
 from sqlmodel import Session, select
 from fastapi import APIRouter
+
+from app.schemas import EventRequest, EventResponse
 
 router = APIRouter()
 
@@ -49,6 +49,7 @@ async def create_event(
 ) -> Event | None:
     user: User = request.state.user
     try:
+        # TODO check if user is owner of organization
         db.begin()
         event: Event = Event(
             name=event.name,
@@ -71,7 +72,10 @@ async def create_event(
 
 @router.delete("/{event_id}", tags=["events"])
 async def delete_event(
-    request: Request, event_id: UUID, org_id: UUID, db: Session = Depends(get_db_session)
+    request: Request,
+    event_id: UUID,
+    org_id: UUID,
+    db: Session = Depends(get_db_session),
 ) -> Response:
     user: User = request.state.user
     organization: Optional[Organization] = next(
