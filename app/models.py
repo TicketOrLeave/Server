@@ -123,9 +123,9 @@ class EventResponse(BaseModel):
     status: EventStatus
     start_date: datetime
     end_date: datetime
-    location: str
-    description: str
-    cover_image_url: str
+    location: str | None
+    description: str | None
+    cover_image_url: str | None
     max_tickets: int
     created_at: datetime
     updated_at: datetime
