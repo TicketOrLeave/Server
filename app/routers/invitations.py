@@ -284,10 +284,22 @@ async def invitation_status(
     if invitation is None:
         raise HTTPException(status_code=404, detail="Invitation not found")
     invitation.status = status_request.status
+
     try:
-        db.add(invitation)
+        if status_request.status == InvitationStatus.accepted:
+            user_organization_role = UserOrganizationRole(
+                user_id=user.id,
+                organization_id=invitation.organization_id,
+                user_role=invitation.role,
+            )
+            db.add(user_organization_role)
+            db.commit()
+        elif status_request.status == InvitationStatus.rejected:
+            pass
+
+        db.delete(invitation)
         db.commit()
-    except:
+    except Exception as e:
         db.rollback()
-        raise
+        raise HTTPException(status_code=500, detail="Invitation status update failed")
     return Response(status_code=204)
