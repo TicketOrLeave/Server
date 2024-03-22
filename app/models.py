@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from pydantic import BaseModel
-from sqlalchemy import event
+from sqlalchemy import ForeignKeyConstraint, event
 from sqlalchemy.orm import relationship
 from sqlmodel import Field, Relationship, Enum, SQLModel
 from enum import Enum as PyEnum
@@ -46,11 +46,22 @@ class User(TenantModel, table=True):
     )
     invitations: list["Invitation"] = Relationship(
         back_populates="user",
-        sa_relationship=relationship(foreign_keys="Invitation.user_id"),
+        sa_relationship=relationship(
+            foreign_keys="Invitation.user_id", cascade="all, delete-orphan"
+        ),
     )
-    current_organization_id: uuid.UUID = Field(
-        foreign_key="organization.id", nullable=True
-    )
+
+    # current_organization_id: uuid.UUID = Field(
+    #     foreign_key="organization.id", nullable=True
+    # )
+
+    # __table_args__ = (
+    #     ForeignKeyConstraint(
+    #         ["current_organization_id"],
+    #         ["organization.id"],
+    #         name="fk_user_current_organization_id",
+    #     ),
+    # )
 
 
 class InvitationStatus(str, PyEnum):
@@ -71,6 +82,12 @@ class Organization(AbstractModel, table=True):
         sa_relationship=relationship(cascade="all, delete-orphan"),
     )
     invitations: list["Invitation"] = Relationship(back_populates="organization")
+
+    # __table_args__ = (
+    #     ForeignKeyConstraint(
+    #         ["owner"], ["user.id"], name="fk_organization_owner_user_id"
+    #     ),
+    # )
 
 
 class Invitation(TenantModel, table=True):
@@ -106,7 +123,9 @@ class Event(TenantModel, table=True):
     name: str = Field(nullable=False)
     cover_image_url: str = Field(nullable=True)
     description: str = Field(nullable=True)
-    status: EventStatus = Enum(EventStatus, nullable=False, default=EventStatus.SCHEDULED)
+    status: EventStatus = Enum(
+        EventStatus, nullable=False, default=EventStatus.SCHEDULED
+    )
     start_date: datetime = Field(nullable=False)
     end_date: datetime = Field(nullable=False)
     location: str = Field(nullable=True)

@@ -8,14 +8,14 @@ from app.routers.organizations import router as organizations_router
 from app.routers.invitations import router as invitations_router
 from app.routers.events import router as events_router
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Set up
     init_db()
     yield
     # Tear down
-    # TODO: fix drop issue
-    # SQLModel.metadata.drop_all(bind=engine)
+    SQLModel.metadata.drop_all(bind=engine)
 
 
 api = FastAPI(lifespan=lifespan)

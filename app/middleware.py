@@ -85,17 +85,17 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 )
             )
         # get user current organization
-        organization: Optional[Organization] = next(
-            (
-                org
-                for org in user.organizations
-                if org.id == user.current_organization_id
-            ),
-            None,
-        )
+        # organization: Optional[Organization] = next(
+        #     (
+        #         org
+        #         for org in user.organizations
+        #         if org.id == user.current_organization_id
+        #     ),
+        #     None,
+        # )
 
         request.state.user = user
-        request.state.current_organization = organization
+        # request.state.current_organization = organization
         request.state.db = db
         response = await call_next(request)
         db.close()
