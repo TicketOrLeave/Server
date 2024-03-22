@@ -22,7 +22,7 @@ def before_update(mapper, connection, target):
     target.updated_at = datetime.now()
 
 
-class UserRole(PyEnum):
+class UserRole(str, PyEnum):
     creator = "creator"
     admin = "admin"
     staff = "staff"
@@ -112,7 +112,7 @@ class Invitation(TenantModel, table=True):
     )
 
 
-class EventStatus(PyEnum):
+class EventStatus(str, PyEnum):
     SCHEDULED = "SCHEDULED"
     ONGOING = "ONGOING"
     FINISHED = "FINISHED"
@@ -161,7 +161,7 @@ class EventRequest(BaseModel):
     cover_image_url: str = None
 
 
-class TicketStatus(PyEnum):
+class TicketStatus(str, PyEnum):
     pending = "pending"
     accepted = "accepted"
     declined = "declined"
@@ -178,7 +178,7 @@ class Ticket(TenantModel, table=True):
     attendees_logs: list["AttendeesLog"] = Relationship(back_populates="ticket")
 
 
-class AttendeeStatus(PyEnum):
+class AttendeeStatus(str, PyEnum):
     joined = "joined"
     left = "left"
 
