@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Sequence, Tuple
 from fastapi import APIRouter, HTTPException, Response, Depends
 from app.models import (
     User,
@@ -8,10 +8,14 @@ from app.models import (
 )
 from app.database import get_db_session
 from starlette.requests import Request
-from app.schemas import OrganizationsResponse, OrganizationRequestBody
+from app.schemas import (
+    OrganizationsResponse,
+    OrganizationRequestBody,
+    OrganizationMember,
+)
 from uuid import UUID
-from sqlmodel import Session
-
+from sqlmodel import Session, select
+from sqlalchemy.orm import joinedload
 
 router = APIRouter()
 
@@ -47,18 +51,35 @@ async def organizations(
 @router.get("/{organization_id}/members", tags=["organizations", "members"])
 async def organization_members(
     request: Request, organization_id: UUID, db: Session = Depends(get_db_session)
-) -> list[User | None]:
+) -> list[OrganizationMember]:
     user: User = request.state.user
 
     organization: Optional[Organization] = next(
         (org for org in user.organizations if org.id == organization_id), None
     )
-
     if organization is None:
         # unauthorized
         raise HTTPException(status_code=401, detail="Organization not found")
 
-    return organization.members
+    # get all members of the organization with roles
+    members = db.exec(
+        select(User, UserOrganizationRole)
+        .join(UserOrganizationRole)
+        .where(UserOrganizationRole.organization_id == organization_id)
+    ).all()
+
+    members_with_roles = []
+    for member, role in members:
+        members_with_roles.append(
+            OrganizationMember(
+                id=member.id,
+                name=member.name,
+                email=member.email,
+                image_url=member.image_url,
+                role=role.user_role,
+            )
+        )
+    return members_with_roles
 
 
 @router.post("/", tags=["organizations"], response_model=Organization)

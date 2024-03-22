@@ -61,6 +61,17 @@ class OrganizationRequestBody(BaseModel):
         extra = "forbid"
 
 
+class ReservationEventResponse(BaseModel):
+
+    id: UUID
+    name: str
+    start_date: datetime
+    end_date: datetime
+    location: str | None
+    description: str | None
+    cover_image_url: str | None
+
+
 class EventResponse(BaseModel):
     id: UUID
     name: str
@@ -73,6 +84,14 @@ class EventResponse(BaseModel):
     max_tickets: int
     created_at: datetime
     updated_at: datetime
+
+
+class OrganizationMember(BaseModel):
+    id: UUID
+    name: str
+    email: EmailStr
+    image_url: str
+    role: UserRole
 
 
 class EventRequest(BaseModel):

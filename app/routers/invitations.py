@@ -1,4 +1,3 @@
-import select
 from typing import Optional, Literal
 from fastapi import APIRouter, BackgroundTasks, Body, HTTPException, Response, Depends
 from app.models import (
