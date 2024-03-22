@@ -3,11 +3,13 @@ from sqlmodel import create_engine, Session
 from contextlib import contextmanager
 from os import remove, getenv
 from app.models import *
+from dotenv import load_dotenv
 
+load_dotenv()
 
 MODE = getenv("MODE", "dev")
 
-if MODE == "dev":
+if MODE == "testing":
     sqlite_file_name = "database.db"
     DATA_BASE_URL = f"sqlite:///{sqlite_file_name}"
 
@@ -24,6 +26,8 @@ else:
     DATA_BASE_URL: str = (
         f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
     )
+
+print(DATA_BASE_URL)
 engine = create_engine(DATA_BASE_URL, echo=False)
 
 

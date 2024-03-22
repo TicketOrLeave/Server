@@ -14,7 +14,8 @@ async def lifespan(app: FastAPI):
     init_db()
     yield
     # Tear down
-    SQLModel.metadata.drop_all(bind=engine)
+    # TODO: fix drop issue
+    # SQLModel.metadata.drop_all(bind=engine)
 
 
 api = FastAPI(lifespan=lifespan)

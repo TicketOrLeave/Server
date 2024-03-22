@@ -6,6 +6,7 @@ fastapi-nextauth-jwt
 uvicorn
 pydantic[email]
 fastapi-mail
+psycopg2
 # dev
 pylint
 black
