@@ -1,7 +1,9 @@
 import select
 from fastapi import APIRouter, HTTPException, Depends
 from app.models import (
+    EventRequest,
     EventResponse,
+    EventStatus,
     User,
     Event,
     UserOrganizationRole,
@@ -36,3 +38,29 @@ async def organization_events(
     ).all()
 
     return events
+
+
+@router.post("/", tags=["events"], response_model=Event)
+async def create_event(
+    request: Request, event: EventRequest, db: Session = Depends(get_db_session)
+) -> Event | None:
+    user: User = request.state.user
+    try:
+        db.begin()
+        event: Event = Event(
+            name=event.name,
+            organization_id=event.orgId,
+            cover_image_url=event.cover_image_url,
+            description=event.description,
+            location=event.location,
+            start_date=event.start_date,
+            end_date=event.end_date,
+            max_tickets=event.max_tickets,
+            status=EventStatus.SCHEDULED,
+        )
+        db.add(event)
+        db.commit()
+    except:
+        db.rollback()
+        raise
+    return event

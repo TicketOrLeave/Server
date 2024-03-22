@@ -96,10 +96,10 @@ class Invitation(TenantModel, table=True):
 
 
 class EventStatus(PyEnum):
-    SCHEDULED = "Scheduled"
-    ONGOING = "Ongoing"
-    FINISHED = "Finished"
-    PENDING = "Pending"
+    SCHEDULED = "SCHEDULED"
+    ONGOING = "ONGOING"
+    FINISHED = "FINISHED"
+    PENDING = "PENDING"
 
 
 class Event(TenantModel, table=True):
@@ -120,6 +120,7 @@ class Event(TenantModel, table=True):
 class EventResponse(BaseModel):
     id: uuid.UUID
     name: str
+    status: EventStatus
     start_date: datetime
     end_date: datetime
     location: str
@@ -128,6 +129,17 @@ class EventResponse(BaseModel):
     max_tickets: int
     created_at: datetime
     updated_at: datetime
+
+
+class EventRequest(BaseModel):
+    name: str
+    start_date: datetime
+    end_date: datetime
+    max_tickets: int = 0
+    orgId: str
+    description: str = None
+    location: str = None
+    cover_image_url: str = None
 
 
 class TicketStatus(PyEnum):
