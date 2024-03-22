@@ -1,9 +1,12 @@
 import select
-from fastapi import APIRouter, HTTPException, Depends
+from typing import Optional
+from uuid import UUID
+from fastapi import APIRouter, HTTPException, Depends, Response
 from app.models import (
     EventRequest,
     EventResponse,
     EventStatus,
+    Organization,
     User,
     Event,
     UserOrganizationRole,
@@ -64,3 +67,26 @@ async def create_event(
         db.rollback()
         raise
     return event
+
+
+@router.delete("/{event_id}", tags=["events"])
+async def delete_event(
+    request: Request, event_id: UUID, org_id: UUID, db: Session = Depends(get_db_session)
+) -> Response:
+    user: User = request.state.user
+    organization: Optional[Organization] = next(
+        (org for org in user.organizations if org.id == org_id), None
+    )
+    if organization is None:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    if organization.owner != user.id:
+        raise HTTPException(
+            status_code=401, detail="User is not the owner of the organization"
+        )
+    if not any(event.id == event_id for event in organization.events):
+        raise HTTPException(status_code=404, detail="Event not found")
+    db.begin()
+    event: Event = db.get(Event, event_id)
+    db.delete(event)
+    db.commit()
+    return Response(status_code=204)
