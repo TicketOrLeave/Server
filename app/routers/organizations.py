@@ -1,5 +1,5 @@
-from typing import Optional, Sequence, Tuple
-from fastapi import APIRouter, HTTPException, Response, Depends
+from typing import Literal, Optional, Sequence, Tuple
+from fastapi import APIRouter, Body, HTTPException, Response, Depends
 from app.models import (
     User,
     Organization,
@@ -125,4 +125,126 @@ async def delete_organization(request: Request, organization_id: UUID) -> Respon
     except:
         db.rollback()
         raise
+    return Response(status_code=204)
+
+
+@router.put(
+    "/{organization_id}/members/{user_id}",
+    tags=["organizations", "members"],
+)
+async def change_user_role(
+    request: Request,
+    organization_id: UUID,
+    user_id: UUID,
+    role: Literal[UserRole.admin, UserRole.staff] = Body(...),
+    db: Session = Depends(get_db_session),
+) -> Response:
+    user: User = request.state.user
+    organization: Optional[Organization] = next(
+        (org for org in user.organizations if org.id == organization_id), None
+    )
+    if organization is None:
+        raise HTTPException(status_code=401, detail="Organization not found")
+
+    if user.id == user_id:
+        raise HTTPException(status_code=401, detail="User cannot change their own role")
+
+    target_user_organization_role = db.exec(
+        select(UserOrganizationRole)
+        .where(UserOrganizationRole.user_id == user_id)
+        .where(UserOrganizationRole.organization_id == organization_id)
+    ).first()
+    if target_user_organization_role is None:
+        raise HTTPException(
+            status_code=401, detail="User not found in the organization"
+        )
+    current_user_organization_role = db.exec(
+        select(UserOrganizationRole)
+        .where(UserOrganizationRole.user_id == user.id)
+        .where(UserOrganizationRole.organization_id == organization_id)
+    ).first()
+    if current_user_organization_role.user_role == UserRole.staff:
+        raise HTTPException(
+            status_code=401, detail="User is not authorized to change roles"
+        )
+    elif (
+        current_user_organization_role.user_role == UserRole.admin
+        and role == UserRole.admin
+    ):
+        raise HTTPException(
+            status_code=401, detail="User is not authorized to change roles to admin"
+        )
+
+    elif target_user_organization_role.user_role == UserRole.creator:
+        raise HTTPException(status_code=401, detail="Cannot change role of the creator")
+    elif target_user_organization_role.user_role == role:
+        raise HTTPException(status_code=401, detail="User is already in the same role")
+    target_user_organization_role.user_role = role
+    try:
+        db.add(target_user_organization_role)
+        db.commit()
+    except:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Role not updated")
+
+    return Response(status_code=204)
+
+
+@router.delete(
+    "/{organization_id}/members/{user_id}",
+    tags=["organizations", "members"],
+)
+async def remove_user_from_organization(
+    request: Request,
+    organization_id: UUID,
+    user_id: UUID,
+    db: Session = Depends(get_db_session),
+) -> Response:
+    user: User = request.state.user
+    organization: Optional[Organization] = next(
+        (org for org in user.organizations if org.id == organization_id), None
+    )
+    # TODO: check if user is the owner of the organization
+    if organization is None:
+        raise HTTPException(status_code=401, detail="Organization not found")
+
+    target_user_organization_role = db.exec(
+        select(UserOrganizationRole)
+        .where(UserOrganizationRole.user_id == user_id)
+        .where(UserOrganizationRole.organization_id == organization_id)
+    ).first()
+
+    if target_user_organization_role is None:
+        raise HTTPException(
+            status_code=401, detail="User not found in the organization"
+        )
+    current_user_organization_role = db.exec(
+        select(UserOrganizationRole)
+        .where(UserOrganizationRole.user_id == user.id)
+        .where(UserOrganizationRole.organization_id == organization_id)
+    ).first()
+
+    if current_user_organization_role.user_role == UserRole.staff:
+        raise HTTPException(
+            status_code=401, detail="User is not authorized to remove members"
+        )
+    elif target_user_organization_role.user_role == UserRole.creator:
+        raise HTTPException(
+            status_code=401, detail="Cannot remove the creator from the organization"
+        )
+    elif (
+        current_user_organization_role.user_role == UserRole.admin
+        and target_user_organization_role.user_role == UserRole.admin
+    ):
+        raise HTTPException(status_code=401, detail="Admin cannot remove another admin")
+
+    try:
+        db.delete(target_user_organization_role)
+        db.commit()
+    except:
+        db.rollback()
+        raise HTTPException(
+            status_code=400, detail="User not removed from the organization"
+        )
+
     return Response(status_code=204)
