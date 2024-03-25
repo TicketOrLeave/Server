@@ -15,7 +15,7 @@ from starlette.requests import Request
 from sqlmodel import Session, select
 from fastapi import APIRouter
 
-from app.schemas import EventRequest, EventResponse
+from app.schemas import EventRequest, EventResponse, EditEventRequest
 
 router = APIRouter()
 
@@ -81,6 +81,7 @@ async def create_event(
     try:
         db.add(event)
         db.commit()
+        db.refresh(event)
     except:
         db.rollback()
         raise
@@ -120,3 +121,49 @@ async def delete_event(
         db.rollback()
         raise HTTPException(status_code=500, detail="Error deleting event")
     return Response(status_code=204)
+
+
+@router.put("/{event_id}", tags=["events"])
+async def update_event(
+    request: Request,
+    event_id: UUID,
+    event_request: EditEventRequest,
+    db: Session = Depends(get_db_session),
+) -> Event | None:
+    user: User = request.state.user
+    user_org_role: UserOrganizationRole = db.exec(
+        select(UserOrganizationRole).where(
+            UserOrganizationRole.user_id == user.id,
+            UserOrganizationRole.organization_id == event_request.orgId,
+        )
+    ).first()
+
+    if user_org_role is None:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    if user_org_role.user_role not in [UserRole.creator, UserRole.admin]:
+        raise HTTPException(
+            status_code=401, detail="User is not the owner of the organization"
+        )
+    event: Event | None = db.exec(
+        select(Event)
+        .where(Event.id == event_id)
+        .where(Event.organization_id == event_request.orgId)
+    ).first()
+    if event is None:
+        raise HTTPException(status_code=404, detail="Event not found")
+    event.name = event_request.name
+    event.cover_image_url = event_request.cover_image_url
+    event.description = event_request.description
+    event.location = event_request.location
+    event.start_date = event_request.start_date
+    event.end_date = event_request.end_date
+    event.max_tickets = event_request.max_tickets
+    event.status = event_request.status
+    try:
+        db.add(event)
+        db.commit()
+        db.refresh(event)
+    except:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Error updating event")
+    return event

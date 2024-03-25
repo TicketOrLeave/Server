@@ -103,3 +103,13 @@ class EventRequest(BaseModel):
     description: str = None
     location: str = None
     cover_image_url: str = None
+
+    class Config:
+        extra = "forbid"
+
+
+class EditEventRequest(EventRequest):
+    status: EventStatus
+
+    class Config:
+        extra = "forbid"
