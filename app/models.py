@@ -112,8 +112,8 @@ class Invitation(TenantModel, table=True):
 
 class EventStatus(str, PyEnum):
     SCHEDULED = "SCHEDULED"
-    ONGOING = "ONGOING"
-    FINISHED = "FINISHED"
+    # ONGOING = "ONGOING"
+    # FINISHED = "FINISHED"
     PENDING = "PENDING"
 
 

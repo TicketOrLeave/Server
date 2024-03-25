@@ -65,6 +65,10 @@ async def create_event(
         raise HTTPException(
             status_code=401, detail="User is not the owner of the organization"
         )
+    elif event.start_date > event.end_date:
+        raise HTTPException(
+            status_code=400, detail="Start date cannot be greater than end date"
+        )
 
     event: Event = Event(
         name=event.name,
@@ -75,7 +79,7 @@ async def create_event(
         start_date=event.start_date,
         end_date=event.end_date,
         max_tickets=event.max_tickets,
-        status=EventStatus.SCHEDULED,
+        status=EventStatus.PENDING,
     )
 
     try:
@@ -143,6 +147,10 @@ async def update_event(
     if user_org_role.user_role not in [UserRole.creator, UserRole.admin]:
         raise HTTPException(
             status_code=401, detail="User is not the owner of the organization"
+        )
+    if event_request.start_date > event_request.end_date:
+        raise HTTPException(
+            status_code=400, detail="Start date cannot be greater than end date"
         )
     event: Event | None = db.exec(
         select(Event)
