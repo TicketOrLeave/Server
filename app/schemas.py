@@ -66,7 +66,6 @@ class OrganizationRequestBody(BaseModel):
 
 
 class ReservationEventResponse(BaseModel):
-
     id: UUID
     name: str
     start_date: datetime
@@ -107,6 +106,14 @@ class EventRequest(BaseModel):
     description: str = None
     location: str = None
     cover_image_url: str = None
+
+    class Config:
+        extra = "forbid"
+
+
+class TicketRequest(BaseModel):
+    name: str
+    email: str
 
     class Config:
         extra = "forbid"

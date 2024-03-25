@@ -11,5 +11,5 @@ psycopg2
 pylint
 black
 pytest
-
+psycopg2
 

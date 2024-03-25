@@ -7,6 +7,7 @@ from app.models import *
 from app.routers.organizations import router as organizations_router
 from app.routers.invitations import router as invitations_router
 from app.routers.events import router as events_router
+from app.routers.tickets import router as ticket_router
 
 
 @asynccontextmanager
@@ -15,7 +16,7 @@ async def lifespan(app: FastAPI):
     init_db()
     yield
     # Tear down
-    SQLModel.metadata.drop_all(bind=engine)
+    # SQLModel.metadata.drop_all(bind=engine)
 
 
 api = FastAPI(lifespan=lifespan)
@@ -23,6 +24,7 @@ api.add_middleware(AuthMiddleware)
 api.include_router(organizations_router, prefix="/organizations")
 api.include_router(invitations_router, prefix="/invitations")
 api.include_router(events_router, prefix="/events")
+api.include_router(ticket_router, prefix="/tickets")
 
 
 @api.get("/")

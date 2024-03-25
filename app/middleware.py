@@ -20,35 +20,24 @@ import asyncio
 
 load_dotenv()
 
-
 SECRET_KEY = getenv("SECRET_KEY")
 
 
 class AuthMiddleware(BaseHTTPMiddleware):
     # TODO: edit this line
     JWT = NextAuthJWT(secret=SECRET_KEY, check_expiry=True, csrf_methods=["X"])
-
-    def get_user(self, request: Request, organizations=False):
-        with get_db() as db:
-            # We Make eager loading to load the organizations of the user
-            if organizations:
-                statement = (
-                    select(User)
-                    .options(joinedload(User.organizations))
-                    .where(User.email == request.state.user_email)
-                )
-            else:
-                statement = select(User).where(User.email == request.state.user_email)
-
-            user = db.exec(statement).first()
-            return user
+    allowed_paths = ["/docs", "/openapi.json", "/redoc", "/events/event", "/tickets/*"]
 
     async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
+            self, request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
-        # ignore docs, /openapi.json and /redoc
-        if request.url.path in ["/docs", "/openapi.json", "/redoc"]:
+        if request.url.path in self.allowed_paths:
             return await call_next(request)
+        for path in self.allowed_paths:
+            if path.endswith("*") and (
+                    request.url.path.startswith(path[:-1]) or request.url.path.startswith(path[:-2])):
+                return await call_next(request)
+
         try:
             decoded_token = self.JWT(request)
         except InvalidTokenError:
