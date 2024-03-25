@@ -50,6 +50,10 @@ class InvitationStatusRequest(BaseModel):
     status: Literal[InvitationStatus.accepted, InvitationStatus.rejected] = Field(...)
 
 
+class UserChangeRoleRequest(BaseModel):
+    role: Literal[UserRole.admin, UserRole.staff]
+
+
 class OrganizationRequestBody(BaseModel):
     name: str
     contact_email: EmailStr

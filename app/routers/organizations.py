@@ -12,6 +12,7 @@ from app.schemas import (
     OrganizationsResponse,
     OrganizationRequestBody,
     OrganizationMember,
+    UserChangeRoleRequest,
 )
 from uuid import UUID
 from sqlmodel import Session, select
@@ -136,7 +137,7 @@ async def change_user_role(
     request: Request,
     organization_id: UUID,
     user_id: UUID,
-    role: Literal[UserRole.admin, UserRole.staff] = Body(...),
+    role: UserChangeRoleRequest = Body(...),
     db: Session = Depends(get_db_session),
 ) -> Response:
     user: User = request.state.user
@@ -179,7 +180,7 @@ async def change_user_role(
         raise HTTPException(status_code=401, detail="Cannot change role of the creator")
     elif target_user_organization_role.user_role == role:
         raise HTTPException(status_code=401, detail="User is already in the same role")
-    target_user_organization_role.user_role = role
+    target_user_organization_role.user_role = role.role
     try:
         db.add(target_user_organization_role)
         db.commit()
