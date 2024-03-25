@@ -8,6 +8,7 @@ from app.models import (
     User,
     Event,
     UserOrganizationRole,
+    UserRole,
 )
 from app.database import get_db_session
 from starlette.requests import Request
@@ -25,7 +26,6 @@ async def organization_events(
 ) -> list[EventResponse]:
     user: User = request.state.user
 
-    db.begin()
     # check if user in organization
     user_org_role: UserOrganizationRole = db.exec(
         select(UserOrganizationRole).where(
@@ -48,20 +48,37 @@ async def create_event(
     request: Request, event: EventRequest, db: Session = Depends(get_db_session)
 ) -> Event | None:
     user: User = request.state.user
-    try:
-        # TODO check if user is owner of organization
-        db.begin()
-        event: Event = Event(
-            name=event.name,
-            organization_id=event.orgId,
-            cover_image_url=event.cover_image_url,
-            description=event.description,
-            location=event.location,
-            start_date=event.start_date,
-            end_date=event.end_date,
-            max_tickets=event.max_tickets,
-            status=EventStatus.SCHEDULED,
+
+    # check if user in organization
+    user_org_role: UserOrganizationRole = db.exec(
+        select(UserOrganizationRole).where(
+            UserOrganizationRole.user_id == user.id,
+            UserOrganizationRole.organization_id == event.orgId,
         )
+    ).first()
+    # TODO check if user is owner of organization
+    if user_org_role is None:
+        # unauthorized
+        raise HTTPException(status_code=404, detail="Organization not found")
+    elif user_org_role.user_role not in [UserRole.creator, UserRole.admin]:
+        # unauthorized
+        raise HTTPException(
+            status_code=401, detail="User is not the owner of the organization"
+        )
+
+    event: Event = Event(
+        name=event.name,
+        organization_id=event.orgId,
+        cover_image_url=event.cover_image_url,
+        description=event.description,
+        location=event.location,
+        start_date=event.start_date,
+        end_date=event.end_date,
+        max_tickets=event.max_tickets,
+        status=EventStatus.SCHEDULED,
+    )
+
+    try:
         db.add(event)
         db.commit()
     except:
@@ -78,19 +95,28 @@ async def delete_event(
     db: Session = Depends(get_db_session),
 ) -> Response:
     user: User = request.state.user
-    organization: Optional[Organization] = next(
-        (org for org in user.organizations if org.id == org_id), None
-    )
-    if organization is None:
+    user_org_role: UserOrganizationRole = db.exec(
+        select(UserOrganizationRole).where(
+            UserOrganizationRole.user_id == user.id,
+            UserOrganizationRole.organization_id == org_id,
+        )
+    ).first()
+
+    if user_org_role is None:
         raise HTTPException(status_code=404, detail="Organization not found")
-    if organization.owner != user.id:
+    if user_org_role.user_role not in [UserRole.creator, UserRole.admin]:
         raise HTTPException(
             status_code=401, detail="User is not the owner of the organization"
         )
-    if not any(event.id == event_id for event in organization.events):
+    event: Event | None = db.exec(
+        select(Event).where(Event.id == event_id).where(Event.organization_id == org_id)
+    ).first()
+    if event is None:
         raise HTTPException(status_code=404, detail="Event not found")
-    db.begin()
-    event: Event = db.get(Event, event_id)
-    db.delete(event)
-    db.commit()
+    try:
+        db.delete(event)
+        db.commit()
+    except:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Error deleting event")
     return Response(status_code=204)
