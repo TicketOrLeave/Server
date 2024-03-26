@@ -15,7 +15,7 @@ from starlette.requests import Request
 from sqlmodel import Session, select
 from fastapi import APIRouter
 
-from app.schemas import EventRequest, EventResponse, EditEventRequest
+from app.schemas import EventRequest, EventResponse, EditEventRequest, EventResponseWithOrganization
 
 router = APIRouter()
 
@@ -114,7 +114,8 @@ async def delete_event(
             status_code=401, detail="User is not the owner of the organization"
         )
     event: Event | None = db.exec(
-        select(Event).where(Event.id == event_id).where(Event.organization_id == org_id)
+        select(Event).where(Event.id == event_id).where(
+            Event.organization_id == org_id)
     ).first()
     if event is None:
         raise HTTPException(status_code=404, detail="Event not found")
@@ -177,12 +178,24 @@ async def update_event(
     return event
 
 
-@router.get("/event", tags=["events"], response_model=list[EventResponse])
+@router.get("/event", tags=["events"], response_model=EventResponseWithOrganization)
 async def event_by_id(
         request: Request, event_id: str, db: Session = Depends(get_db_session)
-) -> list[EventResponse]:
-    events: list[Event] = db.exec(
-        select(Event).where(Event.id == event_id)
-    ).all()
-
-    return events
+) -> EventResponseWithOrganization:
+    event: Event = db.exec(select(Event).where(Event.id == event_id)).first()
+    if event is None:
+        raise HTTPException(status_code=404, detail="Event not found")
+    return EventResponseWithOrganization(
+        id=event.id,
+        name=event.name,
+        status=event.status,
+        start_date=event.start_date,
+        end_date=event.end_date,
+        location=event.location,
+        description=event.description,
+        cover_image_url=event.cover_image_url,
+        max_tickets=event.max_tickets,
+        created_at=event.created_at,
+        updated_at=event.updated_at,
+        organization_name=event.organization.name,
+    )

@@ -89,6 +89,11 @@ class EventResponse(BaseModel):
     updated_at: datetime
 
 
+class EventResponseWithOrganization(EventResponse):
+    organization_name: str
+
+
+
 class OrganizationMember(BaseModel):
     id: UUID
     name: str
