@@ -26,8 +26,7 @@ SECRET_KEY = getenv("SECRET_KEY")
 class AuthMiddleware(BaseHTTPMiddleware):
     # TODO: edit this line
     JWT = NextAuthJWT(secret=SECRET_KEY, check_expiry=True, csrf_methods=["X"])
-    allowed_paths = ["/docs", "/openapi.json", "/redoc", "/events/event", "/tickets/*"]
-
+    allowed_paths = ["/docs", "/openapi.json", "/redoc", "/events/event"]
     async def dispatch(
             self, request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
