@@ -1,5 +1,6 @@
+from typing import Union, List, Dict
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
-from fastapi import BackgroundTasks
+from fastapi import BackgroundTasks, UploadFile
 from os import getenv
 
 
@@ -31,6 +32,7 @@ class EmailSender:
         email: str,
         subject: str,
         template_name: str,
+        attachments: List[Union[Dict, str, UploadFile]] = [],
         **kwargs
     ):
         if template_name not in self.templates:
@@ -40,10 +42,18 @@ class EmailSender:
             recipients=[email],
             subtype="html",
             template_body=self.templates[template_name].render(**kwargs),
+            attachments=attachments,
         )
         background_tasks.add_task(self.mail.send_message, message)
 
-    async def send_email(self, email: str, subject: str, template_name: str, **kwargs):
+    async def send_email(
+        self,
+        email: str,
+        subject: str,
+        template_name: str,
+        attachments: List[Union[Dict, str, UploadFile]] = [],
+        **kwargs
+    ):
         if template_name not in self.templates:
             self.load_template(template_name)
         message = MessageSchema(
@@ -51,5 +61,6 @@ class EmailSender:
             recipients=[email],
             subtype="html",
             template_body=self.templates[template_name].render(**kwargs),
+            attachments=attachments,
         )
         await self.mail.send_message(message)

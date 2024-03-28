@@ -75,6 +75,14 @@ class ReservationEventResponse(BaseModel):
     cover_image_url: str | None
 
 
+class TicketRequest(BaseModel):
+    name: str
+    email: str
+
+    class Config:
+        extra = "forbid"
+
+
 class EventResponse(BaseModel):
     id: UUID
     name: str
@@ -91,7 +99,6 @@ class EventResponse(BaseModel):
 
 class EventResponseWithOrganization(EventResponse):
     organization_name: str
-
 
 
 class OrganizationMember(BaseModel):

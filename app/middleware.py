@@ -26,15 +26,24 @@ SECRET_KEY = getenv("SECRET_KEY")
 class AuthMiddleware(BaseHTTPMiddleware):
     # TODO: edit this line
     JWT = NextAuthJWT(secret=SECRET_KEY, check_expiry=True, csrf_methods=["X"])
-    allowed_paths = ["/docs", "/openapi.json", "/redoc", "/events/event"]
+    allowed_paths = [
+        "/docs",
+        "/openapi.json",
+        "/redoc",
+        "/events/event",
+        "/reservation",
+    ]
+
     async def dispatch(
-            self, request: Request, call_next: RequestResponseEndpoint
+        self, request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
         if request.url.path in self.allowed_paths:
             return await call_next(request)
         for path in self.allowed_paths:
             if path.endswith("*") and (
-                    request.url.path.startswith(path[:-1]) or request.url.path.startswith(path[:-2])):
+                request.url.path.startswith(path[:-1])
+                or request.url.path.startswith(path[:-2])
+            ):
                 return await call_next(request)
 
         try:
