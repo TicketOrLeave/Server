@@ -79,7 +79,7 @@ async def create_event(
         start_date=event.start_date,
         end_date=event.end_date,
         max_tickets=event.max_tickets,
-        status=EventStatus.PENDING,
+        status=EventStatus.SCHEDULED,
     )
 
     try:

@@ -31,7 +31,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
         "/openapi.json",
         "/redoc",
         "/events/event",
-        "/reservation",
+        "/reservation/*",
     ]
 
     async def dispatch(
