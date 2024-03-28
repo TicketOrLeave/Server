@@ -2,11 +2,15 @@ fastapi
 python-dotenv
 PyJWT
 sqlmodel
-
-
+fastapi-nextauth-jwt
+uvicorn
+pydantic[email]
+fastapi-mail
+psycopg2
+segno
 # dev
 pylint
 black
 pytest
-
+psycopg2
 

@@ -1,44 +1,43 @@
-from fastapi import FastAPI
-from sqlmodel import Session, create_engine, SQLModel
-from app.models.user import User
-from app.models.organization import Organization
-from app.models.link_models import UserOrganization
+from starlette.requests import Request
+from fastapi import FastAPI, BackgroundTasks
+from contextlib import asynccontextmanager
+from app.database import engine, init_db
+from app.middleware import AuthMiddleware
+from app.models import *
+from app.routers.organizations import router as organizations_router
+from app.routers.invitations import router as invitations_router
+from app.routers.events import router as events_router
+from app.routers.tickets import router as ticket_router
+from app.routers.reservation import router as reservation_router
 
-api = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Set up
+    init_db()
+    yield
+    # Tear down
+    # SQLModel.metadata.drop_all(bind=engine)
+
+
+api = FastAPI(lifespan=lifespan)
+api.add_middleware(AuthMiddleware)
+api.include_router(organizations_router, prefix="/organizations")
+api.include_router(invitations_router, prefix="/invitations")
+api.include_router(events_router, prefix="/events")
+api.include_router(ticket_router, prefix="/tickets")
+api.include_router(reservation_router, prefix="/reservation")
 
 
 @api.get("/")
-def read_root():
-    return {"Hello": "World"}
+def read_root(request: Request):
+    username = request.state.user.name
+    email = request.state.user.email
+    return {"Hello": f"{username}, {email}"}
 
 
-sqlite_file_name = "database.db"
-sqlite_url = f"sqlite:///{sqlite_file_name}"
+if __name__ == "__main__":
+    import uvicorn
 
-engine = create_engine(sqlite_url, echo=True)
-
-SQLModel.metadata.create_all(engine)
-
-with Session(engine) as session:
-
-    user_1 = User(email="email1", name="name1", image_url="url1")
-    user_2 = User(email="email2", name="name2", image_url="url2")
-    user_3 = User(email="email3", name="name3", image_url="url3")
-
-    session.add_all([user_1, user_2, user_3])
-
-    organization_1 = Organization(name="organization1", owner=user_1.id)
-    organization_2 = Organization(name="organization2", owner=user_2.id)
-    organization_3 = Organization(name="organization3", owner=user_3.id)
-
-    session.add_all([organization_1, organization_2, organization_3])
-
-    user_organization_1 = UserOrganization(
-        user_id=user_1.id, organization_id=organization_1.id
-    )
-    user_organization_2 = UserOrganization(
-        user_id=user_2.id, organization_id=organization_2.id
-    )
-
-    session.add_all([user_organization_1, user_organization_2])
-    session.commit()
+    SQLModel.metadata.create_all(bind=engine)
+    uvicorn.run(api, host="0.0.0.0", port=8000)

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+    <title>Ticket Confirmation for {{event_name}}</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f5f5f5;
+        margin: 0;
+        padding: 0;
+      }
+
+      .container {
+        max-width: 600px;
+        margin: 20px auto;
+        background-color: #ffffff;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      h1 {
+        color: #333333;
+      }
+
+      p {
+        color: #666666;
+      }
+
+      .button {
+        display: inline-block;
+        background-color: #4ade80;
+        color: white;
+        padding: 10px 20px;
+        text-align: center;
+        text-decoration: none;
+        border-radius: 4px;
+        margin-top: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Ticket Confirmation for {{event_name}}</h1>
+      <p>Dear {{ name }},</p>
+      <p>
+        Your ticket for "{{event_name}}" has been successfully booked. Please
+        find the details below:
+      </p>
+      <ul>
+        <li><strong>Event:</strong> {{event_name}}</li>
+        <li><strong>Location:</strong> {{location}}</li>
+        <li><strong>Date:</strong> {{date}}</li>
+      </ul>
+      <p>Please save the attached QR code for entry to the event.</p>
+      <p>If you have any questions or concerns, feel free to contact us.</p>
+      <p>Best regards,<br />The Event Team</p>
+    </div>
+  </body>
+</html>
