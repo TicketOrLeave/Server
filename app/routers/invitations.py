@@ -1,3 +1,4 @@
+import os
 from typing import Optional, Literal
 from fastapi import APIRouter, BackgroundTasks, Body, HTTPException, Response, Depends
 from app.models import (
@@ -154,6 +155,7 @@ async def invite_member(
             invitername=user.name,
             invitation_id=user_invitation.id,
             username=invited_user.name,
+            client_url=os.getenv("CLIENT_URL"),
         )
     except:
         db.rollback()
