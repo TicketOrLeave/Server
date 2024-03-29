@@ -34,7 +34,16 @@ async def get_event(
     if event is None:
         raise HTTPException(status_code=404, detail="Event not found")
 
-    return event
+    return ReservationEventResponse(
+        id=event.id,
+        name=event.name,
+        organization_name=event.organization.name,
+        start_date=event.start_date,
+        end_date=event.end_date,
+        location=event.location,
+        description=event.description,
+        cover_image_url=event.cover_image_url,
+    )
 
 
 @router.post("/{event_id}", tags=["events"], response_model=Ticket)
@@ -55,10 +64,12 @@ async def book_ticket(
         raise HTTPException(status_code=404, detail="Event not found")
 
     tickets_count: int = (
-        db.exec(select(Ticket).where(Ticket.event_id == event_id)).all().__len__()
+        db.exec(select(Ticket).where(
+            Ticket.event_id == event_id)).all().__len__()
     )
     if tickets_count >= event.max_tickets and event.max_tickets != 0:
-        raise HTTPException(status_code=400, detail="No more tickets available")
+        raise HTTPException(
+            status_code=400, detail="No more tickets available")
 
     alrady_booked = db.exec(
         select(Ticket)

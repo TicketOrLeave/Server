@@ -68,6 +68,7 @@ class OrganizationRequestBody(BaseModel):
 class ReservationEventResponse(BaseModel):
     id: UUID
     name: str
+    organization_name: str
     start_date: datetime
     end_date: datetime
     location: str | None
