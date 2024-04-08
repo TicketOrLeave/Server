@@ -13,4 +13,4 @@ pylint
 black
 pytest
 psycopg2
-
+httpx

@@ -29,8 +29,10 @@ class UserRole(str, PyEnum):
 
 class UserOrganizationRole(TenantModel, table=True):
     user_id: uuid.UUID = Field(primary_key=True, foreign_key="user.id")
-    organization_id: uuid.UUID = Field(primary_key=True, foreign_key="organization.id")
-    user_role: UserRole = Enum(UserRole, nullable=False, default=UserRole.staff)
+    organization_id: uuid.UUID = Field(
+        primary_key=True, foreign_key="organization.id")
+    user_role: UserRole = Enum(
+        UserRole, nullable=False, default=UserRole.staff)
     organization: "Organization" = Relationship(
         back_populates="members_roles",
     )
@@ -41,7 +43,8 @@ class User(TenantModel, table=True):
     email: str = Field(nullable=False, unique=True)
     image_url: str = Field(nullable=True)
     organizations: list["Organization"] = Relationship(
-        back_populates="members", link_model=UserOrganizationRole
+        back_populates="members", link_model=UserOrganizationRole,
+        sa_relationship=relationship(overlaps="organization"),
     )
     invitations: list["Invitation"] = Relationship(
         back_populates="user",
@@ -73,14 +76,17 @@ class Organization(AbstractModel, table=True):
     name: str = Field(nullable=False)
     owner: uuid.UUID = Field(nullable=False, foreign_key="user.id")
     members: list["User"] = Relationship(
-        back_populates="organizations", link_model=UserOrganizationRole
+        back_populates="organizations", link_model=UserOrganizationRole,
+        sa_relationship=relationship(overlaps="organizations"),
     )
     events: list["Event"] = Relationship(back_populates="organization")
     members_roles: list["UserOrganizationRole"] = Relationship(
         back_populates="organization",
-        sa_relationship=relationship(cascade="all, delete-orphan"),
+        sa_relationship=relationship(
+            cascade="all, delete-orphan"),
     )
-    invitations: list["Invitation"] = Relationship(back_populates="organization")
+    invitations: list["Invitation"] = Relationship(
+        back_populates="organization")
     contact_email: str = Field(nullable=False)  # TODO:unique=True
     description: str = Field(nullable=True)
     logo_url: str = Field(nullable=True)
@@ -101,11 +107,13 @@ class Invitation(TenantModel, table=True):
     )
     user: User = Relationship(
         back_populates="invitations",
-        sa_relationship=relationship(foreign_keys="Invitation.user_id"),
+        sa_relationship=relationship(
+            foreign_keys="Invitation.user_id", overlaps="invitations"),
     )
     organization: Organization = Relationship(
         back_populates="invitations",
-        sa_relationship=relationship(foreign_keys="Invitation.organization_id"),
+        sa_relationship=relationship(
+            foreign_keys="Invitation.organization_id"),
     )
 
 
@@ -124,7 +132,8 @@ class Event(TenantModel, table=True):
     start_date: datetime = Field(nullable=False)
     end_date: datetime = Field(nullable=False)
     location: str = Field(nullable=True)
-    max_tickets: int = Field(nullable=False, default=0, description="0 means unlimited")
+    max_tickets: int = Field(nullable=False, default=0,
+                             description="0 means unlimited")
     organization_id: uuid.UUID = Field(foreign_key="organization.id")
     tickets: list["Ticket"] = Relationship(back_populates="event")
     organization: Organization = Relationship(back_populates="events")
@@ -145,7 +154,8 @@ class Ticket(TenantModel, table=True):
     event: Event = Relationship(back_populates="tickets")
     owner_email: str = Field(nullable=False)
     owner_name: str = Field(nullable=False)
-    attendees_logs: list["AttendeesLog"] = Relationship(back_populates="ticket")
+    attendees_logs: list["AttendeesLog"] = Relationship(
+        back_populates="ticket")
 
 
 class AttendeeStatus(str, PyEnum):

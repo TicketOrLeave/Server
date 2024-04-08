@@ -1,5 +1,5 @@
 from typing import Literal
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from uuid import UUID
 from datetime import datetime
 from app.models import EventStatus, User, Organization, UserRole, InvitationStatus
@@ -47,7 +47,8 @@ class UserInvitation(BaseModel):
 
 
 class InvitationStatusRequest(BaseModel):
-    status: Literal[InvitationStatus.accepted, InvitationStatus.rejected] = Field(...)
+    status: Literal[InvitationStatus.accepted,
+                    InvitationStatus.rejected] = Field(...)
 
 
 class UserChangeRoleRequest(BaseModel):
@@ -55,14 +56,12 @@ class UserChangeRoleRequest(BaseModel):
 
 
 class OrganizationRequestBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     name: str
     contact_email: EmailStr
     description: str = None
     logo_url: str = None
     website: str = None
-
-    class Config:
-        extra = "forbid"
 
 
 class ReservationEventResponse(BaseModel):
@@ -77,11 +76,9 @@ class ReservationEventResponse(BaseModel):
 
 
 class TicketRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     name: str
     email: str
-
-    class Config:
-        extra = "forbid"
 
 
 class EventResponse(BaseModel):
@@ -111,6 +108,7 @@ class OrganizationMember(BaseModel):
 
 
 class EventRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     name: str
     start_date: datetime
     end_date: datetime
@@ -120,20 +118,13 @@ class EventRequest(BaseModel):
     location: str = None
     cover_image_url: str = None
 
-    class Config:
-        extra = "forbid"
-
 
 class TicketRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     name: str
     email: str
 
-    class Config:
-        extra = "forbid"
-
 
 class EditEventRequest(EventRequest):
+    model_config = ConfigDict(extra="forbid")
     status: EventStatus
-
-    class Config:
-        extra = "forbid"

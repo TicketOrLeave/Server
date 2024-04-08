@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+import os
 from fastapi_nextauth_jwt import NextAuthJWT
 from fastapi_nextauth_jwt.exceptions import (
     InvalidTokenError,
@@ -10,10 +10,9 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.requests import Request
 from starlette.responses import Response
 from sqlmodel import select
-from app.database import get_db, get_db_session
-from app.models import User, Organization
+from app.database import get_db_session
+from app.models import User
 from os import getenv
-from sqlalchemy.orm import joinedload
 from dotenv import load_dotenv
 from app.utilities.mail import EmailSender
 import asyncio
@@ -61,9 +60,14 @@ class AuthMiddleware(BaseHTTPMiddleware):
         exp = decoded_token.get("exp")
         exp_datetime = datetime.utcfromtimestamp(exp)
         url = decoded_token.get("picture")
-        db = next(get_db_session())
+        if os.environ.get("MODE") == "TEST":
+            from app.tests import get_db_override
+            db = next(get_db_override())
+        else:
+            db = next(get_db_session())
 
         statement = select(User).where(User.email == mail)
+
         user = db.exec(statement).first()
 
         if not user:
@@ -81,18 +85,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
                     username=name,
                 )
             )
-        # get user current organization
-        # organization: Optional[Organization] = next(
-        #     (
-        #         org
-        #         for org in user.organizations
-        #         if org.id == user.current_organization_id
-        #     ),
-        #     None,
-        # )
-
         request.state.user = user
-        # request.state.current_organization = organization
         request.state.db = db
         response = await call_next(request)
         db.close()
