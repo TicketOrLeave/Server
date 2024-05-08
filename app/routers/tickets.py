@@ -8,7 +8,7 @@ from starlette.requests import Request
 from sqlmodel import Session, select
 from fastapi import APIRouter
 from sqlalchemy.orm import joinedload
-
+from datetime import datetime
 
 router = APIRouter()
 
@@ -44,10 +44,12 @@ async def delete_ticket(
     request: Request, ticket_id: UUID, db: Session = Depends(get_db_session)
 ):
     user = request.state.user
-    ticket: Ticket = db.exec(select(Ticket).where(Ticket.id == ticket_id)).first()
+    ticket: Ticket = db.exec(select(Ticket).where(
+        Ticket.id == ticket_id)).first()
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
-    event: Event = db.exec(select(Event).where(Event.id == ticket.event_id)).first()
+    event: Event = db.exec(select(Event).where(
+        Event.id == ticket.event_id)).first()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
     user_org_role: UserOrganizationRole = db.exec(
