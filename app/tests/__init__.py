@@ -72,4 +72,4 @@ def init_user():
         return user
 
 
-init_user()
+db_user = init_user()
