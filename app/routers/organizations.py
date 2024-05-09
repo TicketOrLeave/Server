@@ -25,9 +25,15 @@ router = APIRouter()
 @router.get("/", tags=["organizations"], response_model=list[Organization])
 async def user_organizations(
     request: Request,
-) -> OrganizationsResponse:
+    db: Session = Depends(get_db_session)
+) -> list[Organization]:
     user: User = request.state.user
-    return user.organizations
+    UserOrganization: Sequence[UserOrganizationRole] = db.exec(
+        select(UserOrganizationRole)
+        .where(UserOrganizationRole.user_id == user.id)
+        .options(joinedload(UserOrganizationRole.organization))
+    ).all()
+    return [user_org.organization for user_org in UserOrganization]
 
 
 @router.get(
@@ -149,7 +155,8 @@ async def change_user_role(
         raise HTTPException(status_code=401, detail="Organization not found")
 
     if user.id == user_id:
-        raise HTTPException(status_code=401, detail="User cannot change their own role")
+        raise HTTPException(
+            status_code=401, detail="User cannot change their own role")
 
     target_user_organization_role = db.exec(
         select(UserOrganizationRole)
@@ -178,9 +185,11 @@ async def change_user_role(
         )
 
     elif target_user_organization_role.user_role == UserRole.creator:
-        raise HTTPException(status_code=401, detail="Cannot change role of the creator")
+        raise HTTPException(
+            status_code=401, detail="Cannot change role of the creator")
     elif target_user_organization_role.user_role == role:
-        raise HTTPException(status_code=401, detail="User is already in the same role")
+        raise HTTPException(
+            status_code=401, detail="User is already in the same role")
     target_user_organization_role.user_role = role.role
     try:
         db.add(target_user_organization_role)
@@ -238,7 +247,8 @@ async def remove_user_from_organization(
         current_user_organization_role.user_role == UserRole.admin
         and target_user_organization_role.user_role == UserRole.admin
     ):
-        raise HTTPException(status_code=401, detail="Admin cannot remove another admin")
+        raise HTTPException(
+            status_code=401, detail="Admin cannot remove another admin")
 
     try:
         db.delete(target_user_organization_role)
