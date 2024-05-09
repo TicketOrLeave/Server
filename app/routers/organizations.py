@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Literal, Optional, Sequence, Tuple
 from fastapi import APIRouter, Body, HTTPException, Response, Depends
 from app.models import (
@@ -249,3 +250,39 @@ async def remove_user_from_organization(
         )
 
     return Response(status_code=204)
+
+
+@router.put(
+    "/{organization_id}",
+    tags=["organizations"],
+    response_model=Organization,
+)
+async def update_organization(
+    request: Request,
+    organization_id: UUID,
+    request_body: OrganizationRequestBody,
+    db: Session = Depends(get_db_session),
+) -> Organization | Response | None:
+    user: User = request.state.user
+    organization: Optional[Organization] = db.exec(
+        select(Organization).where(Organization.id == organization_id)
+    ).first()
+    if organization is None:
+        raise HTTPException(status_code=401, detail="Organization not found")
+    if organization.owner != user.id:
+        raise HTTPException(
+            status_code=401, detail="User is not the owner of the organization"
+        )
+    organization.name = request_body.name
+    organization.contact_email = request_body.contact_email
+    organization.description = request_body.description
+    organization.logo_url = request_body.logo_url
+    organization.website = request_body.website
+    try:
+        db.add(organization)
+        db.commit()
+        db.refresh(organization)
+    except:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Organization not updated")
+    return organization
