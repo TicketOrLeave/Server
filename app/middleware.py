@@ -47,6 +47,16 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 return await call_next(request)
 
         try:
+
+            # change __Secure-next-auth.session-token to next-auth.session-token in the request.cookies
+            # it is a workaround for the issue with the cookie name
+            # TODO: change this when library is updated
+            # NOTE: library is updated, but the issue is still there
+            if "__Secure-next-auth.session-token" in request.cookies:
+                request.cookies["next-auth.session-token"] = request.cookies.pop(
+                    "__Secure-next-auth.session-token"
+                )
+
             decoded_token = self.JWT(request)
         except InvalidTokenError:
             return Response(status_code=401, content="Invalid token")
