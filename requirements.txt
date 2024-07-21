@@ -2,7 +2,7 @@ fastapi
 python-dotenv
 PyJWT
 sqlmodel
-fastapi-nextauth-jwt
+fastapi-nextauth-jwt==1.1.2
 uvicorn
 pydantic[email]
 fastapi-mail
