@@ -7,9 +7,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-MODE = getenv("MODE", "dev")
+MODE = getenv("MODE", "DEVELOPMENT")
 
-if MODE == "testing":
+if MODE == "TEST":
     sqlite_file_name = "database.db"
     DATA_BASE_URL = f"sqlite:///{sqlite_file_name}"
 
@@ -17,7 +17,7 @@ if MODE == "testing":
         remove(sqlite_file_name)
     except:
         pass
-else:
+elif MODE == "DEVELOPMENT":
     DB_USER = getenv("DB_USER")
     DB_PASS = getenv("DB_PASS")
     DB_HOST = getenv("DB_HOST")
@@ -26,8 +26,8 @@ else:
     DATA_BASE_URL: str = (
         f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
     )
-
-print(DATA_BASE_URL)
+elif MODE == "PRODUCTION":
+    DATA_BASE_URL: str = getenv("POSTGRES_URL")
 engine = create_engine(DATA_BASE_URL, echo=False)
 
 

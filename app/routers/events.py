@@ -15,14 +15,19 @@ from starlette.requests import Request
 from sqlmodel import Session, select
 from fastapi import APIRouter
 
-from app.schemas import EventRequest, EventResponse, EditEventRequest, EventResponseWithOrganization
+from app.schemas import (
+    EventRequest,
+    EventResponse,
+    EditEventRequest,
+    EventResponseWithOrganization,
+)
 
 router = APIRouter()
 
 
 @router.get("/", tags=["events"], response_model=list[EventResponse])
 async def organization_events(
-        request: Request, org_id: str, db: Session = Depends(get_db_session)
+    request: Request, org_id: str, db: Session = Depends(get_db_session)
 ) -> list[EventResponse]:
     user: User = request.state.user
 
@@ -45,7 +50,7 @@ async def organization_events(
 
 @router.post("/", tags=["events"], response_model=Event)
 async def create_event(
-        request: Request, event: EventRequest, db: Session = Depends(get_db_session)
+    request: Request, event: EventRequest, db: Session = Depends(get_db_session)
 ) -> Event | None:
     user: User = request.state.user
 
@@ -94,10 +99,10 @@ async def create_event(
 
 @router.delete("/{event_id}", tags=["events"])
 async def delete_event(
-        request: Request,
-        event_id: UUID,
-        org_id: UUID,
-        db: Session = Depends(get_db_session),
+    request: Request,
+    event_id: UUID,
+    org_id: UUID,
+    db: Session = Depends(get_db_session),
 ) -> Response:
     user: User = request.state.user
     user_org_role: UserOrganizationRole = db.exec(
@@ -114,8 +119,7 @@ async def delete_event(
             status_code=401, detail="User is not the owner of the organization"
         )
     event: Event | None = db.exec(
-        select(Event).where(Event.id == event_id).where(
-            Event.organization_id == org_id)
+        select(Event).where(Event.id == event_id).where(Event.organization_id == org_id)
     ).first()
     if event is None:
         raise HTTPException(status_code=404, detail="Event not found")
@@ -130,10 +134,10 @@ async def delete_event(
 
 @router.put("/{event_id}", tags=["events"])
 async def update_event(
-        request: Request,
-        event_id: UUID,
-        event_request: EditEventRequest,
-        db: Session = Depends(get_db_session),
+    request: Request,
+    event_id: UUID,
+    event_request: EditEventRequest,
+    db: Session = Depends(get_db_session),
 ) -> Event | None:
     user: User = request.state.user
     user_org_role: UserOrganizationRole = db.exec(
@@ -180,7 +184,7 @@ async def update_event(
 
 @router.get("/event", tags=["events"], response_model=EventResponseWithOrganization)
 async def event_by_id(
-        request: Request, event_id: str, db: Session = Depends(get_db_session)
+    request: Request, event_id: str, db: Session = Depends(get_db_session)
 ) -> EventResponseWithOrganization:
     event: Event = db.exec(select(Event).where(Event.id == event_id)).first()
     if event is None:

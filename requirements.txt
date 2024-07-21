@@ -6,11 +6,9 @@ fastapi-nextauth-jwt
 uvicorn
 pydantic[email]
 fastapi-mail
-psycopg2
+psycopg2-binary
 segno
 # dev
 pylint
 black
 pytest
-psycopg2
-

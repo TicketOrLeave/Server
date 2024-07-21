@@ -34,10 +34,3 @@ def read_root(request: Request):
     username = request.state.user.name
     email = request.state.user.email
     return {"Hello": f"{username}, {email}"}
-
-
-if __name__ == "__main__":
-    import uvicorn
-
-    SQLModel.metadata.create_all(bind=engine)
-    uvicorn.run(api, host="0.0.0.0", port=8000)

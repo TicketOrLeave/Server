@@ -1,7 +1,6 @@
 import uuid
 from datetime import datetime
-from pydantic import BaseModel
-from sqlalchemy import ForeignKeyConstraint, event
+from sqlalchemy import event
 from sqlalchemy.orm import relationship
 from sqlmodel import Field, Relationship, Enum, SQLModel
 from enum import Enum as PyEnum
