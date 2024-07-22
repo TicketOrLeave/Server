@@ -12,10 +12,6 @@ class AbstractModel(SQLModel):
     updated_at: datetime = Field(default_factory=datetime.now, nullable=False)
 
 
-class TenantModel(AbstractModel):
-    tenant_id: str = Field(nullable=True)
-
-
 @event.listens_for(AbstractModel, "before_update", propagate=True)
 def before_update(mapper, connection, target):
     target.updated_at = datetime.now()
@@ -27,7 +23,7 @@ class UserRole(str, PyEnum):
     staff = "staff"
 
 
-class UserOrganizationRole(TenantModel, table=True):
+class UserOrganizationRole(AbstractModel, table=True):
     user_id: uuid.UUID = Field(primary_key=True, foreign_key="user.id")
     organization_id: uuid.UUID = Field(primary_key=True, foreign_key="organization.id")
     user_role: UserRole = Enum(UserRole, nullable=False, default=UserRole.staff)
@@ -36,31 +32,24 @@ class UserOrganizationRole(TenantModel, table=True):
     )
 
 
-class User(TenantModel, table=True):
+class User(AbstractModel, table=True):
     name: str = Field(nullable=False)
     email: str = Field(nullable=False, unique=True)
     image_url: str = Field(nullable=True)
     organizations: list["Organization"] = Relationship(
-        back_populates="members", link_model=UserOrganizationRole
+        back_populates="members",
+        link_model=UserOrganizationRole,
+        sa_relationship=relationship(
+            overlaps="organizations",
+        ),
     )
     invitations: list["Invitation"] = Relationship(
         back_populates="user",
         sa_relationship=relationship(
-            foreign_keys="Invitation.user_id", cascade="all, delete-orphan"
+            foreign_keys="Invitation.user_id",
+            cascade="all, delete-orphan",
         ),
     )
-
-    # current_organization_id: uuid.UUID = Field(
-    #     foreign_key="organization.id", nullable=True
-    # )
-
-    # __table_args__ = (
-    #     ForeignKeyConstraint(
-    #         ["current_organization_id"],
-    #         ["organization.id"],
-    #         name="fk_user_current_organization_id",
-    #     ),
-    # )
 
 
 class InvitationStatus(str, PyEnum):
@@ -73,12 +62,18 @@ class Organization(AbstractModel, table=True):
     name: str = Field(nullable=False)
     owner: uuid.UUID = Field(nullable=False, foreign_key="user.id")
     members: list["User"] = Relationship(
-        back_populates="organizations", link_model=UserOrganizationRole
+        back_populates="organizations",
+        link_model=UserOrganizationRole,
+        sa_relationship=relationship(
+            overlaps="organizations",
+        ),
     )
     events: list["Event"] = Relationship(back_populates="organization")
     members_roles: list["UserOrganizationRole"] = Relationship(
         back_populates="organization",
-        sa_relationship=relationship(cascade="all, delete-orphan"),
+        sa_relationship=relationship(
+            cascade="all, delete-orphan", overlaps="members,organizations"
+        ),
     )
     invitations: list["Invitation"] = Relationship(back_populates="organization")
     contact_email: str = Field(nullable=False)  # TODO:unique=True
@@ -87,7 +82,7 @@ class Organization(AbstractModel, table=True):
     website: str = Field(nullable=True)
 
 
-class Invitation(TenantModel, table=True):
+class Invitation(AbstractModel, table=True):
     role: UserRole = Enum(UserRole, nullable=False, default=UserRole.staff)
     status: InvitationStatus = Enum(
         InvitationStatus, nullable=False, default=InvitationStatus.pending
@@ -101,7 +96,9 @@ class Invitation(TenantModel, table=True):
     )
     user: User = Relationship(
         back_populates="invitations",
-        sa_relationship=relationship(foreign_keys="Invitation.user_id"),
+        sa_relationship=relationship(
+            foreign_keys="Invitation.user_id", overlaps="invitations"
+        ),
     )
     organization: Organization = Relationship(
         back_populates="invitations",
@@ -111,12 +108,10 @@ class Invitation(TenantModel, table=True):
 
 class EventStatus(str, PyEnum):
     SCHEDULED = "SCHEDULED"
-    # ONGOING = "ONGOING"
-    # FINISHED = "FINISHED"
     PENDING = "PENDING"
 
 
-class Event(TenantModel, table=True):
+class Event(AbstractModel, table=True):
     name: str = Field(nullable=False)
     cover_image_url: str = Field(nullable=True)
     description: str = Field(nullable=True)
@@ -139,7 +134,7 @@ class TicketStatus(str, PyEnum):
     declined = "declined"
 
 
-class Ticket(TenantModel, table=True):
+class Ticket(AbstractModel, table=True):
     event_id: uuid.UUID = Field(foreign_key="event.id")
     status: TicketStatus = Enum(
         TicketStatus, nullable=False, default=TicketStatus.pending
@@ -155,7 +150,7 @@ class AttendeeStatus(str, PyEnum):
     left = "left"
 
 
-class AttendeesLog(TenantModel, table=True):
+class AttendeesLog(AbstractModel, table=True):
     event_id: uuid.UUID = Field(foreign_key="event.id")
     ticket_id: uuid.UUID = Field(foreign_key="ticket.id")
     status: AttendeeStatus = Enum(AttendeeStatus, nullable=False)
