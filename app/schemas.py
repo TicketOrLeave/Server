@@ -114,10 +114,17 @@ class EventRequest(BaseModel):
     start_date: datetime
     end_date: datetime
     max_tickets: int = 0
-    orgId: str
+    organization_id: UUID
     description: str = None
     location: str = None
     cover_image_url: str = None
+
+    class Config:
+        extra = "forbid"
+
+
+class DeleteEventRequestSchema(BaseModel):
+    organization_id: UUID
 
     class Config:
         extra = "forbid"

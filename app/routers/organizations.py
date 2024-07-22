@@ -1,6 +1,7 @@
 from typing import Literal, Optional, Sequence, Tuple
 from fastapi import APIRouter, Body, HTTPException, Response, Depends
 from app.models import (
+    Event,
     User,
     Organization,
     UserOrganizationRole,
@@ -8,7 +9,9 @@ from app.models import (
 )
 from app.database import get_db_session
 from starlette.requests import Request
+from app.routers.events import get_user_org_role
 from app.schemas import (
+    EventResponse,
     OrganizationsResponse,
     OrganizationRequestBody,
     OrganizationMember,
@@ -249,3 +252,32 @@ async def remove_user_from_organization(
         )
 
     return Response(status_code=204)
+
+
+@router.get(
+    "/{organization_id}/events",
+    tags=["events", "organizations"],
+    response_model=list[EventResponse],
+)
+async def organization_events(
+    request: Request, organization_id: str, db: Session = Depends(get_db_session)
+) -> list[EventResponse]:
+    """
+    args:
+        organization_id: UUID
+        request: Request
+        db: Session = Depends(get_db_session)
+    return:
+        list of events
+    description:
+        Get all events of an organization
+    """
+    user: User = request.state.user
+
+    # check if user in organization
+    await get_user_org_role(user, organization_id, db)
+    events: list[Event] = db.exec(
+        select(Event).where(Event.organization_id == organization_id)
+    ).all()
+
+    return events
