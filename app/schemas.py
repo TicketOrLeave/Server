@@ -114,7 +114,6 @@ class EventRequest(BaseModel):
     start_date: datetime
     end_date: datetime
     max_tickets: int = 0
-    organization_id: UUID
     description: str = None
     location: str = None
     cover_image_url: str = None

@@ -24,7 +24,6 @@ api = FastAPI(lifespan=lifespan)
 api.add_middleware(AuthMiddleware)
 api.include_router(organizations_router, prefix="/organizations")
 api.include_router(invitations_router, prefix="/invitations")
-api.include_router(events_router, prefix="/events")
 api.include_router(ticket_router, prefix="/tickets")
 api.include_router(reservation_router, prefix="/reservation")
 

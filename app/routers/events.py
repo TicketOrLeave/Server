@@ -16,8 +16,8 @@ from fastapi import APIRouter
 from app.schemas import (
     EventRequest,
     EditEventRequest,
+    EventResponse,
     EventResponseWithOrganization,
-    DeleteEventRequestSchema,
 )
 
 router = APIRouter()
@@ -51,7 +51,10 @@ async def get_user_org_role(
 
 @router.post("/", tags=["events"], response_model=Event)
 async def create_event(
-    request: Request, event: EventRequest, db: Session = Depends(get_db_session)
+    request: Request,
+    event: EventRequest,
+    organization_id: UUID,
+    db: Session = Depends(get_db_session),
 ) -> Event | None:
     user: User = request.state.user
     """
@@ -70,7 +73,7 @@ async def create_event(
     """
     # check if user in organization
     user_org_role: UserOrganizationRole = await get_user_org_role(
-        user, event.organization_id, db
+        user, organization_id, db
     )
     if user_org_role.user_role not in [UserRole.creator, UserRole.admin]:
         # unauthorized
@@ -84,7 +87,7 @@ async def create_event(
 
     event: Event = Event(
         name=event.name,
-        organization_id=event.organization_id,
+        organization_id=organization_id,
         cover_image_url=event.cover_image_url,
         description=event.description,
         location=event.location,
@@ -103,55 +106,10 @@ async def create_event(
     return event
 
 
-@router.delete("/{event_id}", tags=["events"])
-async def delete_event(
-    request: Request,
-    event_id: UUID,
-    delete_event_request_schema: DeleteEventRequestSchema,
-    db: Session = Depends(get_db_session),
-) -> Response:
-    """
-    delete event for organization
-
-    Args:
-        request (Request): request object
-        event_id (UUID): event id
-        organization_id (UUID): organization id
-        db (Session, optional): database session.
-
-    Returns:
-        Response: response object with status code 204
-        HTTPException: 404 if event not found
-        HTTPException: 500 if error deleting event
-
-    """
-    user: User = request.state.user
-    user_org_role: UserOrganizationRole = await get_user_org_role(
-        user, delete_event_request_schema.organization_id, db
-    )
-    if user_org_role.user_role not in [UserRole.creator, UserRole.admin]:
-        raise HTTPException(
-            status_code=401, detail="User is not the owner of the organization"
-        )
-    event: Event | None = db.exec(
-        select(Event)
-        .where(Event.id == event_id)
-        .where(Event.organization_id == delete_event_request_schema.organization_id)
-    ).first()
-    if event is None:
-        raise HTTPException(status_code=404, detail="Event not found")
-    try:
-        db.delete(event)
-        db.commit()
-    except:
-        db.rollback()
-        raise HTTPException(status_code=500, detail="Error deleting event")
-    return Response(status_code=204)
-
-
 @router.put("/{event_id}", tags=["events"])
 async def update_event(
     request: Request,
+    organization_id: UUID,
     event_id: UUID,
     event_request: EditEventRequest,
     db: Session = Depends(get_db_session),
@@ -172,7 +130,7 @@ async def update_event(
     """
     user: User = request.state.user
     user_org_role: UserOrganizationRole = await get_user_org_role(
-        user, event_request.organization_id, db
+        user, organization_id, db
     )
 
     if user_org_role.user_role not in [UserRole.creator, UserRole.admin]:
@@ -186,7 +144,7 @@ async def update_event(
     event: Event | None = db.exec(
         select(Event)
         .where(Event.id == event_id)
-        .where(Event.organization_id == event_request.organization_id)
+        .where(Event.organization_id == organization_id)
     ).first()
     if event is None:
         raise HTTPException(status_code=404, detail="Event not found")
@@ -211,7 +169,7 @@ async def update_event(
 @router.get(
     "/{event_id}", tags=["events"], response_model=EventResponseWithOrganization
 )
-async def event_by_id_with_organization_name(
+async def get_event_by_id_with_organization_name(
     request: Request, event_id: UUID, db: Session = Depends(get_db_session)
 ) -> EventResponseWithOrganization:
     """
@@ -243,3 +201,78 @@ async def event_by_id_with_organization_name(
         updated_at=event.updated_at,
         organization_name=event.organization.name,
     )
+
+
+@router.delete("/{event_id}", tags=["events"])
+async def delete_event(
+    request: Request,
+    event_id: UUID,
+    organization_id: UUID,
+    db: Session = Depends(get_db_session),
+) -> Response:
+    """
+    delete event for organization
+
+    Args:
+        request (Request): request object
+        event_id (UUID): event id
+        organization_id (UUID): organization id
+        db (Session, optional): database session.
+
+    Returns:
+        Response: response object with status code 204
+        HTTPException: 404 if event not found
+        HTTPException: 500 if error deleting event
+
+    """
+    user: User = request.state.user
+    user_org_role: UserOrganizationRole = await get_user_org_role(
+        user, organization_id, db
+    )
+    if user_org_role.user_role not in [UserRole.creator, UserRole.admin]:
+        raise HTTPException(
+            status_code=401, detail="User is not the owner of the organization"
+        )
+    event: Event | None = db.exec(
+        select(Event)
+        .where(Event.id == event_id)
+        .where(Event.organization_id == organization_id)
+    ).first()
+    if event is None:
+        raise HTTPException(status_code=404, detail="Event not found")
+    try:
+        db.delete(event)
+        db.commit()
+    except:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Error deleting event")
+    return Response(status_code=204)
+
+
+@router.get(
+    "/",
+    tags=["events", "organizations"],
+    response_model=list[EventResponse],
+)
+async def get_events(
+    request: Request, organization_id: UUID, db: Session = Depends(get_db_session)
+) -> list[EventResponse]:
+    """
+    args:
+        organization_id: UUID
+        request: Request
+        db: Session = Depends(get_db_session)
+    return:
+        list of events
+    description:
+        Get all events of an organization
+    """
+    user: User = request.state.user
+
+    # check if user in organization
+    await get_user_org_role(user, organization_id, db)
+    events: list[Event] = db.exec(
+        select(Event).where(Event.organization_id == organization_id)
+    ).all()
+
+    return events
