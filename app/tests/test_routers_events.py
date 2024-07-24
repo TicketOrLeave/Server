@@ -1,14 +1,14 @@
 """
-test Event routes
+Test Event Routes
 """
 
 import datetime
 import time
 import unittest
 from uuid import uuid4
+from sqlmodel import Session
 
 from . import client, engine, generate_user_token, TestClient, get_db_override
-from sqlmodel import Session
 from app.models import Organization, User, UserOrganizationRole, UserRole, Event
 
 

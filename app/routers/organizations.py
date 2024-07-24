@@ -9,6 +9,7 @@ from app.models import (
 from app.database import get_db_session
 from starlette.requests import Request
 from app.routers.events import router as events_router
+from app.routers.invitations import router as invitations_router
 from app.schemas import (
     OrganizationsResponse,
     OrganizationRequestBody,
@@ -20,6 +21,7 @@ from sqlmodel import Session, select
 
 router = APIRouter()
 router.include_router(events_router, prefix="/{organization_id}/events")
+router.include_router(invitations_router, prefix="/{organization_id}/invitations")
 
 
 @router.get("/", tags=["organizations"], response_model=list[Organization])
@@ -69,6 +71,8 @@ async def organization_members(
         .join(UserOrganizationRole)
         .where(UserOrganizationRole.organization_id == organization_id)
     ).all()
+
+    print(list(members))
 
     members_with_roles = []
     for member, role in members:

@@ -1,5 +1,8 @@
-import os
-from typing import Optional, Literal
+from os import getenv
+from uuid import UUID
+from sqlmodel import Session, select
+from fastapi import APIRouter
+from sqlalchemy.orm import joinedload
 from fastapi import APIRouter, BackgroundTasks, Body, HTTPException, Response, Depends
 from app.models import (
     User,
@@ -20,32 +23,36 @@ from app.schemas import (
     UserInvitationOrganization,
     InvitationStatusRequest,
 )
-from uuid import UUID
-from sqlmodel import Session, select
-from fastapi import APIRouter
-from sqlalchemy.orm import joinedload
+
 from app.utilities.mail import EmailSender
+from app.utilities.database import get_user_org_role
 
 router = APIRouter()
+user_invitations_router = APIRouter()
 
 
-@router.get(
+@user_invitations_router.get(
     "/",
-    tags=["organizations", "invitations", "user"],
+    tags=["invitations", "users"],
     response_model=list[UserInvitation],
 )
-async def user_invitations(
+async def get_user_invitations(
     request: Request,
     db: Session = Depends(get_db_session),
 ) -> list[UserInvitation]:
+    """
+    Get all invitations for the current user
+
+    Args:
+        request (Request): request object
+        db (Session): database session
+
+    Returns:
+        list[UserInvitation]: list of user invitations
+    """
+
     user: User = request.state.user
-    invitations: list[Invitation] = db.exec(
-        select(Invitation)
-        .options(joinedload(Invitation.inviter))
-        .options(joinedload(Invitation.organization))
-        .where(Invitation.user_id == user.id)
-        .where(Invitation.status == InvitationStatus.pending)
-    ).all()
+    invitations: list[Invitation] = user.invitations
     invitations_response: list[UserInvitation] = []
     for invitation in invitations:
         inviter = invitation.inviter
@@ -70,8 +77,62 @@ async def user_invitations(
     return invitations_response
 
 
+@user_invitations_router.put(
+    "/{invitation_id}",
+    tags=["invitations"],
+)
+async def invitation_status_update(
+    request: Request,
+    invitation_id: UUID,
+    status_request: InvitationStatusRequest = Body(...),
+    db: Session = Depends(get_db_session),
+) -> Response:
+    """
+    Update invitation status
+
+    Args:
+        request (Request): request object
+        invitation_id (UUID): invitation id
+        status_request (InvitationStatusRequest): status request
+        db (Session): database session
+
+    Returns:
+        Response: response object with status code 204
+        HTTPException: 404 if invitation not found
+        HTTPException: 500 if error updating invitation status
+    """
+    user: User = request.state.user
+    print("Emad", user)
+    invitation: Invitation | None = db.exec(
+        select(Invitation)
+        .where(Invitation.id == invitation_id)
+        .where(Invitation.user_id == user.id)
+    ).first()
+    if invitation is None:
+        raise HTTPException(status_code=404, detail="Invitation not found")
+
+    invitation.status = status_request.status
+    try:
+        if status_request.status == InvitationStatus.accepted:
+            user_organization_role = UserOrganizationRole(
+                user_id=user.id,
+                organization_id=invitation.organization_id,
+                user_role=invitation.role,
+            )
+            db.add(user_organization_role)
+            db.commit()
+        elif status_request.status == InvitationStatus.rejected:
+            db.delete(invitation)
+            db.commit()
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Invitation status update failed")
+    return Response(status_code=204)
+
+
 @router.post(
-    "/organizations/{organization_id}",
+    "/",
     tags=["organizations", "invitations"],
 )
 async def invite_member(
@@ -81,32 +142,49 @@ async def invite_member(
     invitation: OrganizationInvitationRequest = Body(...),
     db: Session = Depends(get_db_session),
 ) -> Response:
+    """
+    Invite a user to an organization
+
+    Args:
+        request (Request): request object
+        organization_id (UUID): organization id
+        background (BackgroundTasks): background tasks
+        invitation (OrganizationInvitationRequest): invitation request
+        db (Session): database session
+
+    Returns:
+        Response: response object with status code 201
+        HTTPException: 401 if organization not found
+        HTTPException: 401 if user is not allowed to invite to the organization
+        HTTPException: 404 if user not found
+        HTTPException: 400 if user is already a member of the organization
+        HTTPException: 400 if user has already been invited to the organization
+
+    """
     # current user can invite to organization
     user: User = request.state.user
-    organization: Optional[Organization] = next(
+    organization: Organization | None = next(
         (org for org in user.organizations if org.id == organization_id), None
     )
     if organization is None:
         raise HTTPException(status_code=401, detail="Organization not found")
 
-    current_user_role: UserOrganizationRole = db.exec(
-        select(UserOrganizationRole)
-        .where(UserOrganizationRole.user_id == user.id)
-        .where(UserOrganizationRole.organization_id == organization_id)
-    ).first()
-    if current_user_role.user_role == UserRole.staff:
+    current_user_role: UserOrganizationRole = await get_user_org_role(
+        user, organization_id, db
+    )
+    if current_user_role.user_role not in [UserRole.creator, UserRole.admin]:
         raise HTTPException(
             status_code=401, detail="User is not allowed to invite to the organization"
         )
 
-    invited_user: User = db.exec(
+    invited_user: User | None = db.exec(
         select(User).where(User.email == invitation.email)
     ).first()
     if invited_user is None:
         raise HTTPException(status_code=404, detail="User not found")
 
     # check if user is already a member of the organization
-    user_organization_role: UserOrganizationRole = db.exec(
+    user_organization_role: UserOrganizationRole | None = db.exec(
         select(UserOrganizationRole)
         .where(UserOrganizationRole.user_id == invited_user.id)
         .where(UserOrganizationRole.organization_id == organization_id)
@@ -117,7 +195,7 @@ async def invite_member(
             status_code=400, detail="User is already a member of the organization"
         )
     # check if user has already been invited to the organization with the same role
-    user_invitation: Invitation = db.exec(
+    user_invitation: Invitation | None = db.exec(
         select(Invitation)
         .where(Invitation.user_id == invited_user.id)
         .where(Invitation.organization_id == organization_id)
@@ -130,14 +208,10 @@ async def invite_member(
             status_code=400, detail="User has already been invited to the organization"
         )
 
-    # TODO fix default value for role and status
-
-    user_invitation = Invitation(
+    user_invitation: Invitation | None = Invitation(
         user_id=invited_user.id,
         organization_id=organization_id,
         inviter_id=user.id,
-        role=UserRole.staff,
-        status=InvitationStatus.pending,
     )
 
     try:
@@ -155,7 +229,7 @@ async def invite_member(
             invitername=user.name,
             invitation_id=user_invitation.id,
             username=invited_user.name,
-            client_url=os.getenv("CLIENT_URL"),
+            client_url=getenv("CLIENT_URL"),
         )
     except:
         db.rollback()
@@ -164,30 +238,41 @@ async def invite_member(
 
 
 @router.get(
-    "/organizations/{organization_id}",
+    "/",
     tags=["organizations", "invitations"],
 )
 async def get_organization_invitations(
     request: Request,
     organization_id: UUID,
     db: Session = Depends(get_db_session),
-    response_model=list[OrganizationInvitationResponse],
 ) -> list[OrganizationInvitationResponse]:
+    """
+    Get all invitations for an organization
+
+    Args:
+        request (Request): request object
+        organization_id (UUID): organization id
+        db (Session): database session
+
+    Returns:
+        list[OrganizationInvitationResponse]: list of organization invitations
+        HTTPException: 401 if organization not found
+        HTTPException: 401 if user is not allowed to see invitations
+    """
+
     # TODO: think about invitation business logic
     #  - data will be returned
     user: User = request.state.user
-    organization: Optional[Organization] = next(
+    organization: Organization | None = next(
         (org for org in user.organizations if org.id == organization_id), None
     )
     if organization is None:
         raise HTTPException(status_code=401, detail="Organization not found")
     # get user role in organization
-    user_organization_role: UserOrganizationRole = db.exec(
-        select(UserOrganizationRole)
-        .where(UserOrganizationRole.user_id == user.id)
-        .where(UserOrganizationRole.organization_id == organization_id)
-    ).first()
-    if user_organization_role.user_role == UserRole.staff:
+    user_organization_role: UserOrganizationRole = await get_user_org_role(
+        user, organization_id, db
+    )
+    if user_organization_role.user_role not in [UserRole.creator, UserRole.admin]:
         raise HTTPException(
             status_code=401, detail="User is not allowed to see invitations"
         )
@@ -228,7 +313,7 @@ async def get_organization_invitations(
 
 
 @router.delete(
-    "/{invitation_id}/organizations/{organization_id}",
+    "/{invitation_id}",
     tags=["organizations", "invitations"],
 )
 async def delete_organization_invitation(
@@ -237,23 +322,38 @@ async def delete_organization_invitation(
     invitation_id: UUID,
     db: Session = Depends(get_db_session),
 ) -> Response:
+    """
+    Delete an invitation for an organization
+
+    Args:
+        request (Request): request object
+        organization_id (UUID): organization id
+        invitation_id (UUID): invitation id
+        db (Session): database session
+
+    Returns:
+
+        Response: response object with status code 204
+        HTTPException: 401 if organization not found
+        HTTPException: 401 if user is not allowed to delete invitations
+        HTTPException: 404 if invitation not found
+    """
+
     user: User = request.state.user
-    organization: Optional[Organization] = next(
+    organization: Organization | None = next(
         (org for org in user.organizations if org.id == organization_id), None
     )
     if organization is None:
         raise HTTPException(status_code=401, detail="Organization not found")
     # get user role in organization
-    user_organization_role: UserOrganizationRole = db.exec(
-        select(UserOrganizationRole)
-        .where(UserOrganizationRole.user_id == user.id)
-        .where(UserOrganizationRole.organization_id == organization_id)
-    ).first()
-    if user_organization_role.user_role == UserRole.staff:
+    user_organization_role: UserOrganizationRole = await get_user_org_role(
+        user, organization_id, db
+    )
+    if user_organization_role.user_role not in [UserRole.creator, UserRole.admin]:
         raise HTTPException(
             status_code=401, detail="User is not allowed to delete invitations"
         )
-    invitation: Invitation = db.exec(
+    invitation: Invitation | None = db.exec(
         select(Invitation).where(Invitation.id == invitation_id)
     ).first()
     if invitation is None:
@@ -264,44 +364,4 @@ async def delete_organization_invitation(
     except:
         db.rollback()
         raise
-    return Response(status_code=204)
-
-
-@router.put(
-    "/{invitation_id}",
-    tags=["invitations"],
-)
-async def invitation_status(
-    request: Request,
-    invitation_id: UUID,
-    status_request: InvitationStatusRequest = Body(...),
-    db: Session = Depends(get_db_session),
-) -> Response:
-    user: User = request.state.user
-    invitation: Invitation = db.exec(
-        select(Invitation)
-        .where(Invitation.id == invitation_id)
-        .where(Invitation.user_id == user.id)
-    ).first()
-    if invitation is None:
-        raise HTTPException(status_code=404, detail="Invitation not found")
-    invitation.status = status_request.status
-
-    try:
-        if status_request.status == InvitationStatus.accepted:
-            user_organization_role = UserOrganizationRole(
-                user_id=user.id,
-                organization_id=invitation.organization_id,
-                user_role=invitation.role,
-            )
-            db.add(user_organization_role)
-            db.commit()
-        elif status_request.status == InvitationStatus.rejected:
-            pass
-
-        db.delete(invitation)
-        db.commit()
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail="Invitation status update failed")
     return Response(status_code=204)

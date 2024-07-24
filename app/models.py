@@ -26,7 +26,9 @@ class UserRole(str, PyEnum):
 class UserOrganizationRole(AbstractModel, table=True):
     user_id: uuid.UUID = Field(primary_key=True, foreign_key="user.id")
     organization_id: uuid.UUID = Field(primary_key=True, foreign_key="organization.id")
-    user_role: UserRole = Enum(UserRole, nullable=False, default=UserRole.staff)
+    user_role: UserRole = Field(
+        sa_type=Enum(UserRole), nullable=False, default=UserRole.staff
+    )
     organization: "Organization" = Relationship(
         back_populates="members_roles",
     )
@@ -40,7 +42,14 @@ class User(AbstractModel, table=True):
         back_populates="members",
         link_model=UserOrganizationRole,
         sa_relationship=relationship(
-            overlaps="organizations",
+            "Organization",
+            secondary="userorganizationrole",
+            primaryjoin="User.id == UserOrganizationRole.user_id",
+            secondaryjoin="Organization.id == UserOrganizationRole.organization_id",
+            back_populates="members",
+            overlaps="members",
+            lazy="joined",
+            viewonly=True,
         ),
     )
     invitations: list["Invitation"] = Relationship(
@@ -65,7 +74,13 @@ class Organization(AbstractModel, table=True):
         back_populates="organizations",
         link_model=UserOrganizationRole,
         sa_relationship=relationship(
-            overlaps="organizations",
+            "User",
+            secondary="userorganizationrole",
+            primaryjoin="Organization.id == UserOrganizationRole.organization_id",
+            secondaryjoin="User.id == UserOrganizationRole.user_id",
+            back_populates="organizations",
+            lazy="joined",
+            viewonly=True,
         ),
     )
     events: list["Event"] = Relationship(back_populates="organization")
@@ -76,16 +91,18 @@ class Organization(AbstractModel, table=True):
         ),
     )
     invitations: list["Invitation"] = Relationship(back_populates="organization")
-    contact_email: str = Field(nullable=False)  # TODO:unique=True
+    contact_email: str = Field(nullable=True)
     description: str = Field(nullable=True)
     logo_url: str = Field(nullable=True)
     website: str = Field(nullable=True)
 
 
 class Invitation(AbstractModel, table=True):
-    role: UserRole = Enum(UserRole, nullable=False, default=UserRole.staff)
-    status: InvitationStatus = Enum(
-        InvitationStatus, nullable=False, default=InvitationStatus.pending
+    role: UserRole = Field(
+        sa_type=Enum(UserRole), nullable=False, default=UserRole.staff
+    )
+    status: InvitationStatus = Field(
+        sa_type=Enum(InvitationStatus), nullable=False, default=InvitationStatus.pending
     )
     user_id: uuid.UUID = Field(foreign_key="user.id")
     organization_id: uuid.UUID = Field(foreign_key="organization.id")
@@ -115,8 +132,8 @@ class Event(AbstractModel, table=True):
     name: str = Field(nullable=False)
     cover_image_url: str = Field(nullable=True)
     description: str = Field(nullable=True)
-    status: EventStatus = Enum(
-        EventStatus, nullable=False, default=EventStatus.SCHEDULED
+    status: EventStatus = Field(
+        sa_type=Enum(EventStatus), nullable=False, default=EventStatus.PENDING
     )
     start_date: datetime = Field(nullable=False)
     end_date: datetime = Field(nullable=False)
@@ -139,6 +156,9 @@ class Ticket(AbstractModel, table=True):
     status: TicketStatus = Enum(
         TicketStatus, nullable=False, default=TicketStatus.pending
     )
+    status: TicketStatus = Field(
+        sa_type=Enum(TicketStatus), nullable=False, default=TicketStatus.pending
+    )
     event: Event = Relationship(back_populates="tickets")
     owner_email: str = Field(nullable=False)
     owner_name: str = Field(nullable=False)
@@ -153,6 +173,8 @@ class AttendeeStatus(str, PyEnum):
 class AttendeesLog(AbstractModel, table=True):
     event_id: uuid.UUID = Field(foreign_key="event.id")
     ticket_id: uuid.UUID = Field(foreign_key="ticket.id")
-    status: AttendeeStatus = Enum(AttendeeStatus, nullable=False)
+    status: AttendeeStatus = Field(
+        sa_type=Enum(AttendeeStatus), nullable=False, default=AttendeeStatus.joined
+    )
     event: Event = Relationship(back_populates="attendees_logs")
     ticket: Ticket = Relationship(back_populates="attendees_logs")
