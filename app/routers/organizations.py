@@ -1,4 +1,3 @@
-from typing import Optional
 from fastapi import APIRouter, Body, HTTPException, Response, Depends
 from app.models import (
     User,
@@ -19,15 +18,27 @@ from app.schemas import (
 from uuid import UUID
 from sqlmodel import Session, select
 
+from app.utilities.database import get_organization_by_user_id, get_user_org_role
+
 router = APIRouter()
 router.include_router(events_router, prefix="/{organization_id}/events")
 router.include_router(invitations_router, prefix="/{organization_id}/invitations")
 
 
 @router.get("/", tags=["organizations"], response_model=list[Organization])
-async def user_organizations(
+async def get_user_organizations(
     request: Request,
 ) -> OrganizationsResponse:
+    """
+    Returns a list of organizations that the user is a part of.
+
+    Args:
+        request (Request): The request object.
+
+    Returns:
+        OrganizationsResponse: A list of organizations that the user is a part of.
+    """
+
     user: User = request.state.user
     return user.organizations
 
@@ -37,54 +48,69 @@ async def user_organizations(
     tags=["organizations"],
     response_model=Organization,
 )
-async def organizations(
+async def get_organization(
     request: Request, organization_id: UUID, db: Session = Depends(get_db_session)
-) -> Organization | None:
+) -> Organization:
+    """
+    get organization by id
+
+    Args:
+        request (Request): The request object.
+        organization_id (UUID): The organization id.
+        db (Session): The database session.
+
+    Returns:
+        Organization: The organization object
+    """
     user: User = request.state.user
-
-    organization: Optional[Organization] = next(
-        (org for org in user.organizations if org.id == organization_id), None
-    )
-
-    if organization is None:
-        # unauthorized
-        raise HTTPException(status_code=401, detail="Organization not found")
+    organization = await get_organization_by_user_id(user.id, organization_id, db)
     return organization
 
 
 @router.get("/{organization_id}/members", tags=["organizations", "members"])
-async def organization_members(
+async def get_organization_members(
     request: Request, organization_id: UUID, db: Session = Depends(get_db_session)
 ) -> list[OrganizationMember]:
+    """
+    get organization members by organization id
+
+    Args:
+        request (Request): The request object.
+        organization_id (UUID): The organization id.
+        db (Session): The database session.
+
+    Returns:
+        list[OrganizationMember]: A list of organization members with their roles.
+    """
+
     user: User = request.state.user
 
-    organization: Optional[Organization] = next(
-        (org for org in user.organizations if org.id == organization_id), None
-    )
-    if organization is None:
-        # unauthorized
-        raise HTTPException(status_code=401, detail="Organization not found")
+    await get_organization_by_user_id(user.id, organization_id, db)
 
-    # get all members of the organization with roles
-    members = db.exec(
-        select(User, UserOrganizationRole)
+    users_with_role = db.exec(
+        select(
+            User.id,
+            User.name,
+            User.email,
+            User.image_url,
+            UserOrganizationRole.user_role,
+        )
         .join(UserOrganizationRole)
         .where(UserOrganizationRole.organization_id == organization_id)
     ).all()
 
-    print(list(members))
-
     members_with_roles = []
-    for member, role in members:
+    for user_id, name, email, image_url, role in users_with_role:
         members_with_roles.append(
             OrganizationMember(
-                id=member.id,
-                name=member.name,
-                email=member.email,
-                image_url=member.image_url,
-                role=role.user_role,
+                id=user_id,
+                name=name,
+                email=email,
+                image_url=image_url,
+                role=role,
             )
         )
+
     return members_with_roles
 
 
@@ -93,22 +119,35 @@ async def create_organization(
     request: Request,
     request_body: OrganizationRequestBody,
     db: Session = Depends(get_db_session),
-) -> Organization | Response:
+) -> Organization:
+    """
+    create organization
+
+    Args:
+        request (Request): The request object.
+        request_body (OrganizationRequestBody): The request body.
+        db (Session): The database session.
+
+    Returns:
+        Organization: The organization object or a response object.
+        HTTPException (status_code=400): If the organization is not created.
+
+    """
     user: User = request.state.user
     try:
-        db.begin()
         organization = Organization(owner=user.id, **request_body.model_dump())
-        db.add(organization)
-        db.commit()
         user_organization = UserOrganizationRole(
-            user_id=user.id, organization_id=organization.id, user_role=UserRole.creator
+            user_id=user.id,
+            organization_id=organization.id,
+            user_role=UserRole.creator,
         )
-        db.add(user_organization)
+        db.add_all([organization, user_organization])
         db.commit()
+        db.refresh(organization)
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=400, detail="Organization not created")
-    db.refresh(organization)
+
     return organization
 
 
@@ -116,11 +155,21 @@ async def create_organization(
 async def delete_organization(request: Request, organization_id: UUID) -> Response:
     user: User = request.state.user
     db = request.state.db
-    organization: Optional[Organization] = next(
-        (org for org in user.organizations if org.id == organization_id), None
+    organization: Organization = await get_organization_by_user_id(
+        user.id, organization_id, db
     )
-    if organization is None:
-        raise HTTPException(status_code=401, detail="Organization not found")
+    """
+    delete organization
+
+    Args:
+        request (Request): The request object.
+        organization_id (UUID): The organization id.
+
+    Returns:
+        Response: A response object.
+        HTTPException (status_code=401): If the user is not the owner of the organization.
+    """
+
     if organization.owner != user.id:
         raise HTTPException(
             status_code=401, detail="User is not the owner of the organization"
@@ -145,12 +194,32 @@ async def change_user_role(
     role: UserChangeRoleRequest = Body(...),
     db: Session = Depends(get_db_session),
 ) -> Response:
+    """
+    change user role in the organization
+
+    Args:
+        request (Request): The request object.
+        organization_id (UUID): The organization id.
+        user_id (UUID): The user id.
+        role (UserChangeRoleRequest): The role request.
+        db (Session): The database session.
+
+    Returns:
+        Response: A response object.
+        HTTPException (status_code=401): If the user is not authorized to change roles.
+        HTTPException (status_code=401): If the user is not found in the organization.
+        HTTPException (status_code=401): If the user is the owner of the organization.
+        HTTPException (status_code=401): If the user is not authorized to change roles to admin.
+        HTTPException (status_code=401): If the user is already in the same role.
+        HTTPException (status_code=401): If the user is not authorized to change roles.
+        HTTPException (status_code=401): If the user is not authorized to remove members.
+        HTTPException (status_code=401): If the user is not authorized to remove the creator from the organization.
+        HTTPException (status_code=401): If the user is not authorized to remove another admin.
+        HTTPException (status_code=400): If the role is not updated.
+
+    """
     user: User = request.state.user
-    organization: Optional[Organization] = next(
-        (org for org in user.organizations if org.id == organization_id), None
-    )
-    if organization is None:
-        raise HTTPException(status_code=401, detail="Organization not found")
+    await get_organization_by_user_id(user.id, organization_id, db)
 
     if user.id == user_id:
         raise HTTPException(status_code=401, detail="User cannot change their own role")
@@ -207,42 +276,24 @@ async def remove_user_from_organization(
     db: Session = Depends(get_db_session),
 ) -> Response:
     user: User = request.state.user
-    organization: Optional[Organization] = next(
-        (org for org in user.organizations if org.id == organization_id), None
-    )
+    organization = await get_organization_by_user_id(user.id, organization_id, db)
+
     # TODO: check if user is the owner of the organization
-    if organization is None:
-        raise HTTPException(status_code=401, detail="Organization not found")
+    # only the owner of the organization can remove members
 
-    target_user_organization_role = db.exec(
-        select(UserOrganizationRole)
-        .where(UserOrganizationRole.user_id == user_id)
-        .where(UserOrganizationRole.organization_id == organization_id)
-    ).first()
+    target_user_organization_role: UserOrganizationRole = await get_user_org_role(
+        user_id, organization_id, db
+    )
 
-    if target_user_organization_role is None:
+    if organization.owner != user.id:
         raise HTTPException(
-            status_code=401, detail="User not found in the organization"
+            status_code=401, detail="User is not the owner of the organization"
         )
-    current_user_organization_role = db.exec(
-        select(UserOrganizationRole)
-        .where(UserOrganizationRole.user_id == user.id)
-        .where(UserOrganizationRole.organization_id == organization_id)
-    ).first()
 
-    if current_user_organization_role.user_role == UserRole.staff:
+    if organization.owner == user_id:
         raise HTTPException(
-            status_code=401, detail="User is not authorized to remove members"
+            status_code=401, detail="Cannot remove the owner from the organization"
         )
-    elif target_user_organization_role.user_role == UserRole.creator:
-        raise HTTPException(
-            status_code=401, detail="Cannot remove the creator from the organization"
-        )
-    elif (
-        current_user_organization_role.user_role == UserRole.admin
-        and target_user_organization_role.user_role == UserRole.admin
-    ):
-        raise HTTPException(status_code=401, detail="Admin cannot remove another admin")
 
     try:
         db.delete(target_user_organization_role)

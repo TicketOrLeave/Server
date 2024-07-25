@@ -167,7 +167,7 @@ async def invite_member(
     )
 
     current_user_role: UserOrganizationRole = await get_user_org_role(
-        user, organization_id, db
+        user.id, organization_id, db
     )
     if current_user_role.user_role not in [UserRole.creator, UserRole.admin]:
         raise HTTPException(
@@ -265,7 +265,7 @@ async def get_organization_invitations(
     )
     # get user role in organization
     user_organization_role: UserOrganizationRole = await get_user_org_role(
-        user, organization_id, db
+        user.id, organization_id, db
     )
     if user_organization_role.user_role not in [UserRole.creator, UserRole.admin]:
         raise HTTPException(
@@ -330,7 +330,7 @@ async def delete_organization_invitation(
     user: User = request.state.user
 
     user_organization_role: UserOrganizationRole = await get_user_org_role(
-        user, organization_id, db
+        user.id, organization_id, db
     )
     if user_organization_role.user_role not in [UserRole.creator, UserRole.admin]:
         raise HTTPException(

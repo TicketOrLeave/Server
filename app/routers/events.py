@@ -47,7 +47,7 @@ async def create_event(
     """
     # check if user in organization
     user_org_role: UserOrganizationRole = await get_user_org_role(
-        user, organization_id, db
+        user.id, organization_id, db
     )
     if user_org_role.user_role not in [UserRole.creator, UserRole.admin]:
         # unauthorized
@@ -104,7 +104,7 @@ async def update_event(
     """
     user: User = request.state.user
     user_org_role: UserOrganizationRole = await get_user_org_role(
-        user, organization_id, db
+        user.id, organization_id, db
     )
 
     if user_org_role.user_role not in [UserRole.creator, UserRole.admin]:
@@ -201,7 +201,7 @@ async def delete_event(
     """
     user: User = request.state.user
     user_org_role: UserOrganizationRole = await get_user_org_role(
-        user, organization_id, db
+        user.id, organization_id, db
     )
     if user_org_role.user_role not in [UserRole.creator, UserRole.admin]:
         raise HTTPException(
@@ -244,7 +244,7 @@ async def get_events(
     user: User = request.state.user
 
     # check if user in organization
-    await get_user_org_role(user, organization_id, db)
+    await get_user_org_role(user.id, organization_id, db)
     events: list[Event] = db.exec(
         select(Event).where(Event.organization_id == organization_id)
     ).all()

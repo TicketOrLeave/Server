@@ -1,5 +1,5 @@
 """
-Test Tnvitations Routers
+Test Invitations Routers
 """
 
 import time
@@ -90,7 +90,7 @@ class TestInvitationsRouters(unittest.TestCase):
             f"/organizations/{uuid4()}/invitations/",
             json={"email": self.invited_user_email},
         )
-        assert response.status_code == 401
+        assert response.status_code == 404
         assert response.json() == {"detail": "Organization not found"}
 
         response = client.post(
