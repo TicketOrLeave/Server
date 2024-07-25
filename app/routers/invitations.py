@@ -25,7 +25,7 @@ from app.schemas import (
 )
 
 from app.utilities.mail import EmailSender
-from app.utilities.database import get_user_org_role
+from app.utilities.database import get_user_org_role, get_organization_by_user_id
 
 router = APIRouter()
 user_invitations_router = APIRouter()
@@ -102,7 +102,6 @@ async def invitation_status_update(
         HTTPException: 500 if error updating invitation status
     """
     user: User = request.state.user
-    print("Emad", user)
     invitation: Invitation | None = db.exec(
         select(Invitation)
         .where(Invitation.id == invitation_id)
@@ -163,11 +162,9 @@ async def invite_member(
     """
     # current user can invite to organization
     user: User = request.state.user
-    organization: Organization | None = next(
-        (org for org in user.organizations if org.id == organization_id), None
+    organization: Organization = await get_organization_by_user_id(
+        user_id=user.id, organization_id=organization_id, db=db
     )
-    if organization is None:
-        raise HTTPException(status_code=401, detail="Organization not found")
 
     current_user_role: UserOrganizationRole = await get_user_org_role(
         user, organization_id, db
@@ -263,11 +260,9 @@ async def get_organization_invitations(
     # TODO: think about invitation business logic
     #  - data will be returned
     user: User = request.state.user
-    organization: Organization | None = next(
-        (org for org in user.organizations if org.id == organization_id), None
+    organization: Organization | None = await get_organization_by_user_id(
+        user_id=user.id, organization_id=organization_id, db=db
     )
-    if organization is None:
-        raise HTTPException(status_code=401, detail="Organization not found")
     # get user role in organization
     user_organization_role: UserOrganizationRole = await get_user_org_role(
         user, organization_id, db
@@ -277,14 +272,7 @@ async def get_organization_invitations(
             status_code=401, detail="User is not allowed to see invitations"
         )
 
-    invitations: list[Invitation] = db.exec(
-        select(
-            Invitation,
-        )
-        .where(Invitation.organization_id == organization_id)
-        .options(joinedload(Invitation.inviter))
-        .options(joinedload(Invitation.user))
-    ).all()
+    invitations: list[Invitation] = organization.invitations
     invitations_response: list[OrganizationInvitationResponse] = []
     for invitation in invitations:
         inviter: User = invitation.inviter
@@ -340,12 +328,7 @@ async def delete_organization_invitation(
     """
 
     user: User = request.state.user
-    organization: Organization | None = next(
-        (org for org in user.organizations if org.id == organization_id), None
-    )
-    if organization is None:
-        raise HTTPException(status_code=401, detail="Organization not found")
-    # get user role in organization
+
     user_organization_role: UserOrganizationRole = await get_user_org_role(
         user, organization_id, db
     )

@@ -2,6 +2,7 @@ import select
 from uuid import UUID
 from fastapi import HTTPException
 from app.models import (
+    Organization,
     User,
     UserOrganizationRole,
 )
@@ -33,3 +34,22 @@ async def get_user_org_role(
     if user_org_role is None:
         raise HTTPException(status_code=404, detail="Organization not found")
     return user_org_role
+
+
+async def get_organization_by_user_id(
+    user_id: UUID, organization_id: UUID, db: Session
+):
+
+    organization: Organization | None = db.exec(
+        select(Organization)
+        .join(UserOrganizationRole)
+        .where(
+            UserOrganizationRole.user_id == user_id,
+            Organization.id == organization_id,
+        )
+    ).first()
+
+    if organization is None:
+        raise HTTPException(status_code=401, detail="Organization not found")
+
+    return organization

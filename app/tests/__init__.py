@@ -1,3 +1,4 @@
+from unittest import mock
 from cryptography.hazmat.primitives import hashes
 from fastapi_nextauth_jwt.operations import derive_key
 from fastapi.testclient import TestClient
@@ -5,13 +6,13 @@ from os import environ, remove
 import time
 from jose import jwe
 import json
-from sqlmodel import SQLModel, create_engine, Session, delete
+import pytest
+from sqlmodel import SQLModel, create_engine, Session
 
 environ["MODE"] = "TEST"
 
 from app.main import api
 from app.database import get_db_session
-from app.models import User
 
 
 def db_url() -> str:
@@ -66,14 +67,12 @@ def get_db_override():
 api.dependency_overrides[get_db_session] = get_db_override
 
 
-# def init_user():
-#     user = User(name="Emad Anwer", email="test@emad.com", image_url="url1")
-
-#     with Session(engine) as db:
-#         db.add(user)
-#         db.commit()
-#         db.refresh(user)
-#         return user
-
-
-# db_user = init_user()
+@pytest.fixture(autouse=True)
+def mock_email_sender():
+    print("mock_email_sender")
+    with mock.patch(
+        "app.utilities.mail.EmailSender.send_email"
+    ) as mock_send_email, mock.patch(
+        "app.utilities.mail.EmailSender.send_email_background"
+    ) as mock_send_email_background:
+        yield mock_send_email, mock_send_email_background

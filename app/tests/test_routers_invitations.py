@@ -9,7 +9,6 @@ from sqlmodel import Session, select
 
 from app.models import (
     Invitation,
-    InvitationStatus,
     Organization,
     User,
     UserOrganizationRole,
@@ -17,7 +16,12 @@ from app.models import (
 )
 
 
-from . import client, engine, generate_user_token, TestClient, get_db_override
+from . import (
+    client,
+    engine,
+    generate_user_token,
+    TestClient,
+)
 
 
 class TestInvitationsRouters(unittest.TestCase):
@@ -161,9 +165,7 @@ class TestInvitationsRouters(unittest.TestCase):
             f"/organizations/{self.organization_id}/invitations/",
             json={"email": self.invited_user_email},
         )
-
         assert response.status_code == 201
-
         with Session(engine) as db:
             invitation = db.exec(
                 select(Invitation).where(
@@ -243,6 +245,7 @@ class TestInvitationsRouters(unittest.TestCase):
         inviter_email = "inviter_email@test.com"
         inviter_id = uuid4()
         invitation_id = uuid4()
+        new_org_id = uuid4()
         with Session(engine) as db:
             user = User(
                 id=inviter_id,
@@ -252,7 +255,7 @@ class TestInvitationsRouters(unittest.TestCase):
             )
 
             org = Organization(
-                id=uuid4(),
+                id=new_org_id,
                 name="Organization 2",
                 owner=user.id,
                 contact_email="org@test.com",
@@ -280,3 +283,156 @@ class TestInvitationsRouters(unittest.TestCase):
         )
 
         assert response.status_code == 204
+
+        with Session(engine) as db:
+            user_org_role = db.exec(
+                select(UserOrganizationRole).where(
+                    UserOrganizationRole.user_id == self.user_id,
+                    UserOrganizationRole.organization_id == new_org_id,
+                )
+            ).first()
+
+            assert user_org_role is not None
+            assert user_org_role.user_role == UserRole.staff
+
+    def test_reject_invitation(self):
+        """
+        Test reject invitation
+        """
+        inviter_email = "inviter_email@test.com"
+        inviter_id = uuid4()
+        invitation_id = uuid4()
+        new_org_id = uuid4()
+        with Session(engine) as db:
+            user = User(
+                id=inviter_id,
+                name="Inviter User",
+                email=inviter_email,
+                image_url="url1",
+            )
+
+            org = Organization(
+                id=new_org_id,
+                name="Organization 2",
+                owner=user.id,
+                contact_email="org@test.com",
+            )
+
+            user_org_role = UserOrganizationRole(
+                user_id=user.id,
+                organization_id=org.id,
+                user_role=UserRole.creator,
+            )
+
+            invitation = Invitation(
+                id=invitation_id,
+                user_id=self.user_id,
+                inviter_id=inviter_id,
+                organization_id=org.id,
+            )
+
+            db.add_all([user, org, user_org_role, invitation])
+
+            db.commit()
+
+        response = client.put(
+            f"/invitations/{invitation_id}", json={"status": "rejected"}
+        )
+
+        assert response.status_code == 204
+
+        with Session(engine) as db:
+            user_org_role = db.exec(
+                select(UserOrganizationRole).where(
+                    UserOrganizationRole.user_id == self.user_id,
+                    UserOrganizationRole.organization_id == new_org_id,
+                )
+            ).first()
+
+            assert user_org_role is None
+
+        response = client.put(
+            f"/invitations/{invitation_id}", json={"status": "rejected"}
+        )
+
+        assert response.status_code == 404
+
+    def test_get_organization_invitations(self):
+        """
+        Test get organization invitations
+        """
+        response = client.get(f"/organizations/{self.organization_id}/invitations/")
+        assert response.status_code == 200
+        assert len(response.json()) == 0
+        with Session(engine) as db:
+            for i in range(5):
+
+                user = User(
+                    id=uuid4(),
+                    name=f"User {i}",
+                    email=f"user{i}@test.com",
+                    image_url="url{i}",
+                )
+
+                invitation = Invitation(
+                    user_id=user.id,
+                    inviter_id=self.user_id,
+                    organization_id=self.organization_id,
+                )
+
+                db.add_all([user, invitation])
+            db.commit()
+
+        response = client.get(f"/organizations/{self.organization_id}/invitations/")
+
+        assert response.status_code == 200
+        assert len(response.json()) == 5
+
+    def test_delete_invitation(self):
+        """
+        Test delete invitation
+        """
+        org_id = uuid4()
+        invitation_id = uuid4()
+        with Session(engine) as db:
+
+            user1 = User(
+                id=uuid4(),
+                name="User 1",
+                email="user1@test.com",
+                image_url="url1",
+            )
+
+            org = Organization(
+                id=org_id,
+                name="Organization ",
+                owner=user1.id,
+                contact_email="org1@test.com",
+            )
+
+            user_org_role = UserOrganizationRole(
+                user_id=user1.id,
+                organization_id=org.id,
+                user_role=UserRole.creator,
+            )
+
+            invitation = Invitation(
+                id=invitation_id,
+                user_id=self.user_id,
+                inviter_id=user1.id,
+                organization_id=org.id,
+            )
+
+            db.add_all([user1, org, user_org_role, invitation])
+            db.commit()
+
+        response = client.delete(
+            f"organizations/{self.organization_id}/invitations/{invitation_id}"
+        )
+        assert response.status_code == 204
+
+        response = client.delete(
+            f"organizations/{self.organization_id}/invitations/{invitation_id}"
+        )
+
+        assert response.status_code == 404
